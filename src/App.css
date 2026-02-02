@@ -9,3 +9,76 @@
   justify-content: space-between;
   align-items: center;
 }
+
+.storage-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+}
+
+.storage-table thead {
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+
+}
+
+.storage-table th {
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #4a4a4b;
+  border-bottom: 1px solid #e6e8eb;
+  color: #ffffff;
+  text-align: center;
+}
+
+.storage-table td {
+  padding: 12px 16px;
+  font-size: 16px;
+  color: #202124;
+  border-bottom: 1px solid #f0f1f3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.storage-table tbody tr:hover {
+  background: #f5f7fa;
+}
+
+.storage-table tbody tr.folder {
+  font-weight: 500;
+}
+
+.storage-table tbody tr.loading-row td {
+  text-align: center;
+  color: #6b7280;
+}
+
+.storage-table .type {
+  color: #6b7280;
+  font-size: 16px;
+}
+
+.breadcrumb {
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.breadcrumb-link {
+  cursor: pointer;
+  color: #1976d2; /* MUI blue */
+  text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+  text-decoration: underline;
+}

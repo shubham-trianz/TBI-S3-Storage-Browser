@@ -7,7 +7,7 @@ export function UploadButton() {
 
   return (
     <>
-      <Button variant="contained" onClick={() => setOpen(true)}>
+      <Button variant="outlined" onClick={() => setOpen(true)}>
         Upload
       </Button>
 

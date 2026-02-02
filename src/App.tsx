@@ -27,7 +27,7 @@ function App() {
         <>
         
           <div className="header">
-            <h1>{`Hello ${user?.username}`}</h1>
+            <h1>{`Digital Evidence Management System`}</h1>
             <Button onClick={signOut}>Sign out</Button>
           </div>
           {/* <StorageBrowser /> */}
