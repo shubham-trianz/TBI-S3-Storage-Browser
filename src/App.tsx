@@ -22,7 +22,7 @@ function App() {
     <Authenticator>
       {({ signOut, user }) => {
         console.log('user: ', user)
-        console.log('dev branch')
+        console.log('dev branchh')
         return (
         <>
         
