@@ -14,18 +14,27 @@ const { StorageBrowser } = createStorageBrowser({
   config: createAmplifyAuthAdapter(),
 });
 
+import { MyStorageBrowser } from './components/MyStorageBrowser'
+
+
 function App() {
   return (
     <Authenticator>
-      {({ signOut, user }) => (
+      {({ signOut, user }) => {
+        console.log('user: ', user)
+
+        return (
         <>
+        
           <div className="header">
             <h1>{`Hello ${user?.username}`}</h1>
             <Button onClick={signOut}>Sign out</Button>
           </div>
-          <StorageBrowser />
+          {/* <StorageBrowser /> */}
+          <MyStorageBrowser/>
         </>
-      )}
+      )
+      }}
     </Authenticator>
   );
 }
