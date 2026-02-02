@@ -1,49 +1,41 @@
-// import React from 'react'
-import { list } from 'aws-amplify/storage';
-import { useEffect, useState } from 'react'
-import { fetchAuthSession } from 'aws-amplify/auth';
-import { UploadButton } from './utils/UploadButton'
-
+import { useEffect, useState } from "react";
+import { fetchAuthSession } from "aws-amplify/auth";
+import { Tabs } from "@aws-amplify/ui-react";
+import { StorageBrowser } from "@aws-amplify/ui-react-storage";
+import { UploadButton } from "./utils/UploadButton";
+import Personal from "./tabs/Personal";
+import Shared from "./tabs/Shared";
+import Recieved from "./tabs/Recieved";
 export const MyStorageBrowser = () => {
-    const [files, setFiles] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    
-    useEffect(() => {
-        async function loadFiles() {
-        try {
-            const session = await fetchAuthSession();
-            const identityId = session.identityId;
-            console.log('identityId: ', identityId)
-            if (!identityId) return;
+  const [identityId, setIdentityId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("private");
+  useEffect(() => {
+    async function loadSession() {
+      const session = await fetchAuthSession();
+      setIdentityId(session.identityId ?? null);
+    }
+    loadSession();
+  }, []);
 
-            const result = await list({
-                path: `private/${identityId}/`,
-            });
+  if (!identityId) {
+    return <p>Loading files...</p>;
+  }
 
-            setFiles(result.items);
-        } catch (err) {
-            console.error('Error listing files', err);
-        } finally {
-            setLoading(false);
-        }
-        }
-
-        loadFiles();
-    }, []);
-
-    if (loading) return <p>Loading files...</p>;
-
-    return (
-        <>
-        <ul>
-        {files.map((file) => (
-            <li key={file.path}>
-            {file.path}
-            </li>
-        ))}
-        </ul>
-        <UploadButton/>
-        </>
-    );
-}
-
+return (
+    <>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value)}
+        items={[
+          {
+            label: "Personal",
+            value: "private",
+            content: <Personal />,
+          },
+          { label: "Shared", value: "shared", content: <Shared /> },
+          { label: "Recieved", value: "received", content: <Recieved /> },
+        ]}
+      />
+    </>
+  );
+};

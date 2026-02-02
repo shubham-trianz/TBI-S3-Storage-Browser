@@ -21,13 +21,12 @@ function App() {
   return (
     <Authenticator>
       {({ signOut, user }) => {
-        console.log('user: ', user)
-        console.log('dev branchh')
+        const email = user?.signInDetails?.loginId || user?.username || '';
+        // const displayName = email.split('@')[0] || 'User';
         return (
         <>
-        
           <div className="header">
-            <h1>{`Hello ${user?.username}`}</h1>
+            <h1>{`DEMS SOLUTION`}</h1>
             <Button onClick={signOut}>Sign out</Button>
           </div>
           {/* <StorageBrowser /> */}
