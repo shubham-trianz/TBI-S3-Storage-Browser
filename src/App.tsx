@@ -21,11 +21,10 @@ function App() {
   return (
     <Authenticator>
       {({ signOut, user }) => {
-        console.log('user: ', user)
-        console.log('dev branchh')
+        // const email = user?.signInDetails?.loginId || user?.username || '';
+        // const displayName = email.split('@')[0] || 'User';
         return (
         <>
-        
           <div className="header">
             <h1>{`Digital Evidence Management System`}</h1>
             <Button onClick={signOut}>Sign out</Button>
