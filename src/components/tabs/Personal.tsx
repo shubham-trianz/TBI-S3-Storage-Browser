@@ -1,10 +1,10 @@
-import React from 'react'
+// import React from 'react'
 
-export const Personal = () => {
-  return (
-    <div>
+// export const Personal = () => {
+//   return (
+//     <div>
       
-    </div>
-  )
-}
+//     </div>
+//   )
+// }
 
