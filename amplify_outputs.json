@@ -1,9 +1,9 @@
 {
   "auth": {
-    "user_pool_id": "us-east-1_X4EbXxgiq",
+    "user_pool_id": "us-east-1_Y6m9S9qll",
     "aws_region": "us-east-1",
-    "user_pool_client_id": "7pjc9ei3rn21ok7nrlba4lreoa",
-    "identity_pool_id": "us-east-1:8bfc654f-ac61-4a4f-87d0-e1dd12a9a0b9",
+    "user_pool_client_id": "4tc2t1jrnf3v2t92c1vkohqjko",
+    "identity_pool_id": "us-east-1:bce7f43f-0adb-432e-9534-b798ccec3353",
     "mfa_methods": [],
     "standard_required_attributes": [
       "email"
@@ -33,11 +33,11 @@
   },
   "storage": {
     "aws_region": "us-east-1",
-    "bucket_name": "amplify-d1n65v2rvmtu7r-mai-mystoragebucket472d5355-92tqqe8hvukf",
+    "bucket_name": "amplify-d1dgn0zrt9tb32-mai-mystoragebucket472d5355-sb6ffkrqvk1q",
     "buckets": [
       {
         "name": "myStorageBucket",
-        "bucket_name": "amplify-d1n65v2rvmtu7r-mai-mystoragebucket472d5355-92tqqe8hvukf",
+        "bucket_name": "amplify-d1dgn0zrt9tb32-mai-mystoragebucket472d5355-sb6ffkrqvk1q",
         "aws_region": "us-east-1",
         "paths": {
           "public/*": {
@@ -77,7 +77,7 @@
       },
       {
         "name": "mySecondaryStorageBucket",
-        "bucket_name": "amplify-d1n65v2rvmtu7r-ma-mysecondarystoragebucket-jkkswslqpkvz",
+        "bucket_name": "amplify-d1dgn0zrt9tb32-ma-mysecondarystoragebucket-qezmaamrhxbh",
         "aws_region": "us-east-1",
         "paths": {
           "backup_public/*": {
