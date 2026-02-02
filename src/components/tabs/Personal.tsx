@@ -2,15 +2,15 @@ import { list } from 'aws-amplify/storage';
 import { useEffect, useState } from 'react';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
-type S3Item = {
-  eTag: string,
-  path: string;
-  size?: number;
-  lastModified?: Date;
-};
+// type S3Item = {
+//   eTag: string,
+//   path: string;
+//   size?: number;
+//   lastModified?: Date;
+// };
 
 export const Personal = () => {
-  const [files, setFiles] = useState<S3Item[]>([]);
+  const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [identityId, setIdentityId] = useState<string | null>(null);
   // const [currentPath, setCurrentPath] = useState<string>('');
@@ -52,7 +52,7 @@ export const Personal = () => {
   //   }
 
   function getFirstLevelItems(
-  items: S3Item[],
+  items: any[],
   basePath: string
 ): any[] {
   const map = new Map<string, any>();
