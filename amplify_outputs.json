@@ -1,0 +1,121 @@
+{
+  "auth": {
+    "user_pool_id": "us-east-1_X4EbXxgiq",
+    "aws_region": "us-east-1",
+    "user_pool_client_id": "7pjc9ei3rn21ok7nrlba4lreoa",
+    "identity_pool_id": "us-east-1:8bfc654f-ac61-4a4f-87d0-e1dd12a9a0b9",
+    "mfa_methods": [],
+    "standard_required_attributes": [
+      "email"
+    ],
+    "username_attributes": [
+      "email"
+    ],
+    "user_verification_types": [
+      "email"
+    ],
+    "groups": [
+      {
+        "admin": {
+          "precedence": 0
+        }
+      }
+    ],
+    "mfa_configuration": "NONE",
+    "password_policy": {
+      "min_length": 8,
+      "require_lowercase": true,
+      "require_numbers": true,
+      "require_symbols": true,
+      "require_uppercase": true
+    },
+    "unauthenticated_identities_enabled": true
+  },
+  "storage": {
+    "aws_region": "us-east-1",
+    "bucket_name": "amplify-d1n65v2rvmtu7r-mai-mystoragebucket472d5355-92tqqe8hvukf",
+    "buckets": [
+      {
+        "name": "myStorageBucket",
+        "bucket_name": "amplify-d1n65v2rvmtu7r-mai-mystoragebucket472d5355-92tqqe8hvukf",
+        "aws_region": "us-east-1",
+        "paths": {
+          "public/*": {
+            "guest": [
+              "get",
+              "list",
+              "write"
+            ],
+            "authenticated": [
+              "get",
+              "list",
+              "write",
+              "delete"
+            ]
+          },
+          "admin/*": {
+            "groupsadmin": [
+              "get",
+              "list",
+              "write",
+              "delete"
+            ],
+            "authenticated": [
+              "get",
+              "list"
+            ]
+          },
+          "private/${cognito-identity.amazonaws.com:sub}/*": {
+            "entityidentity": [
+              "get",
+              "list",
+              "write",
+              "delete"
+            ]
+          }
+        }
+      },
+      {
+        "name": "mySecondaryStorageBucket",
+        "bucket_name": "amplify-d1n65v2rvmtu7r-ma-mysecondarystoragebucket-jkkswslqpkvz",
+        "aws_region": "us-east-1",
+        "paths": {
+          "backup_public/*": {
+            "guest": [
+              "get",
+              "list",
+              "write"
+            ],
+            "authenticated": [
+              "get",
+              "list",
+              "write",
+              "delete"
+            ]
+          },
+          "backup_admin/*": {
+            "groupsadmin": [
+              "get",
+              "list",
+              "write",
+              "delete"
+            ],
+            "authenticated": [
+              "get",
+              "list"
+            ]
+          },
+          "backup_private/${cognito-identity.amazonaws.com:sub}/*": {
+            "entityidentity": [
+              "get",
+              "list",
+              "write",
+              "delete"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "version": "1.3"
+}
