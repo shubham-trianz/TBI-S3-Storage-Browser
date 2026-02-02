@@ -17,10 +17,17 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 type Props = {
   open: boolean;
   onClose: () => void;
+  // uploadPath?: string;
+  prefix: string;
+  onUploaded?: () => void;
 };
 
-export function UploadDialog({ open, onClose }: Props) {
-  
+export function UploadDialog({
+  open,
+  onClose,
+  prefix,
+  onUploaded,
+}: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [meta, setMeta] = useState({
     caseId: '',
@@ -30,41 +37,48 @@ export function UploadDialog({ open, onClose }: Props) {
   });
 
   const handleUpload = async () => {
-    const session = await fetchAuthSession();
-    const identityId = session.identityId!
-    if (!file || !identityId) return;
+    if (!file) return;
 
-    await uploadData({
-      path: `private/${identityId}/uploads/${file.name}`,
-      data: file,
-      options: {
-        contentType: file.type,
-        metadata: meta,
-      },
-    });
+    try {
+      const fullPath = `${prefix}${file.name}`;
 
-    onClose();
+      await uploadData({
+        path: fullPath,
+        data: file,
+        options: {
+          contentType: file.type,
+          metadata: meta,
+        },
+      }).result;
+
+      onUploaded?.();
+      onClose();
+    } catch (err) {
+      console.error("Upload failed", err);
+      alert("Upload failed");
+    }
   };
 
-  return (
+
+return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Upload file</DialogTitle>
 
       <DialogContent>
         <Stack spacing={2} mt={1}>
-          {/* File picker */}
           <Button variant="outlined" component="label">
             Browse file
             <input
               type="file"
               hidden
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              onChange={(e) =>
+                setFile(e.target.files?.[0] || null)
+              }
             />
           </Button>
 
           {file && <span>Selected: {file.name}</span>}
 
-          {/* Metadata fields */}
           <TextField
             label="Case ID"
             value={meta.caseId}
