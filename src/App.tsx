@@ -23,6 +23,7 @@ function App() {
       {({ signOut, user }) => {
         // const email = user?.signInDetails?.loginId || user?.username || '';
         // const displayName = email.split('@')[0] || 'User';
+        console.log('user: ', user)
         return (
         <>
           <div className="header">
