@@ -1,23 +1,15 @@
-import { list } from 'aws-amplify/storage';
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { fetchAuthSession } from 'aws-amplify/auth';
+import { useEffect, useState, useCallback, useRef } from "react";
+import { fetchAuthSession } from "aws-amplify/auth";
 import {
   Flex,
   Heading,
   Divider,
-  // Text,
   Button,
 } from "@aws-amplify/ui-react";
 import { UploadButton } from "../utils/UploadButton";
 import { DeleteObjects } from "../utils/DeleteObjects";
-import { CreateFolder } from '../utils/CreateFolder';
-
-// type S3Item = {
-//   eTag: string,
-//   path: string;
-//   size?: number;
-//   lastModified?: Date;
-// };
+import { CreateFolder } from "../utils/CreateFolder";
+import { fetchCases } from "../../api/cases";
 
 export const Personal = () => {
   const [files, setFiles] = useState<any[]>([]);
@@ -26,7 +18,10 @@ export const Personal = () => {
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const currentPath = pathStack.join('');
+  const [sortKey, setSortKey] = useState<string>("created_at");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const currentPath = pathStack.join("");
   const selectAllRef = useRef<HTMLInputElement>(null);
 
   /* ------------------ AUTH INIT ------------------ */
@@ -38,64 +33,30 @@ export const Personal = () => {
     init();
   }, []);
 
-  /* ------------------ LIST HELPERS ------------------ */
-  function getFirstLevelItems(
-    items: any[],
-    basePath: string
-  ): any[] {
-    const map = new Map<string, any>();
-
-    for (const item of items) {
-      const relative = item.path.replace(basePath, '');
-      const parts = relative.split('/').filter(Boolean);
-
-      if (parts.length === 1 && !item.path.endsWith('/')) {
-        map.set(item.path, item);
-        continue;
-      }
-
-      if (parts.length >= 1) {
-        const folderPath = basePath + parts[0] + '/';
-        if (!map.has(folderPath)) {
-          map.set(folderPath, {
-            path: folderPath,
-            eTag: '',
-          });
-        }
-      }
-    }
-
-    return Array.from(map.values());
-  }
-
-  /* ------------------ LOAD FILES ------------------ */
-  const loadFiles = useCallback(async () => {
-    if (!identityId) return;
-
+  /* ------------------ LOAD CASES ------------------ */
+  const loadCases = useCallback(async () => {
     setLoading(true);
-    setFiles([]);
     setSelected(new Set());
 
     try {
-      const basePath = `private/${identityId}/${currentPath}`;
-      const result = await list({ path: basePath });
-      setFiles(getFirstLevelItems(result.items, basePath));
+      const items = await fetchCases();
+      setFiles(items);
     } catch (err) {
-      console.error('Error listing files', err);
+      console.error("Error loading cases", err);
     } finally {
       setLoading(false);
     }
-  }, [identityId, currentPath]);
+  }, []);
 
   useEffect(() => {
-    loadFiles();
-  }, [loadFiles]);
+    loadCases();
+  }, [loadCases]);
 
   /* ------------------ SELECTION ------------------ */
-  const toggleSelect = (path: string) => {
+  const toggleSelect = (key: string) => {
     setSelected(prev => {
       const next = new Set(prev);
-      next.has(path) ? next.delete(path) : next.add(path);
+      next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
   };
@@ -104,22 +65,41 @@ export const Personal = () => {
     if (selected.size === files.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(files.map(f => f.path)));
+      setSelected(new Set(files.map(f => f.case_number)));
     }
   };
 
-  /* Update indeterminate state */
   useEffect(() => {
     if (!selectAllRef.current) return;
-
     selectAllRef.current.indeterminate =
       selected.size > 0 && selected.size < files.length;
   }, [selected, files]);
 
+  /* ------------------ SORTING ------------------ */
+  const sortBy = (key: string) => {
+    setSortDir(prev =>
+      sortKey === key && prev === "asc" ? "desc" : "asc"
+    );
+    setSortKey(key);
+  };
+
+  const sortedFiles = [...files].sort((a, b) => {
+    const aVal = a[sortKey];
+    const bVal = b[sortKey];
+
+    if (typeof aVal === "number") {
+      return sortDir === "asc" ? aVal - bVal : bVal - aVal;
+    }
+
+    return sortDir === "asc"
+      ? String(aVal).localeCompare(String(bVal))
+      : String(bVal).localeCompare(String(aVal));
+  });
+
   /* ------------------ UTILS ------------------ */
   function formatBytes(bytes?: number) {
-    if (!bytes) return '—';
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    if (!bytes) return "—";
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
   }
@@ -127,31 +107,32 @@ export const Personal = () => {
   /* ------------------ RENDER ------------------ */
   return (
     <>
-      {/* 🔹 FILE PANE HEADER */}
       <Flex
         justifyContent="space-between"
         alignItems="center"
         padding="0.75rem 0"
       >
-        <Heading level={5}>Files</Heading>
+        <Heading level={5}>Cases</Heading>
 
         <Flex gap="0.5rem">
           <Button
             size="small"
             variation="secondary"
-            onClick={loadFiles}
+            onClick={loadCases}
             isLoading={loading}
           >
             Refresh
           </Button>
+
           <CreateFolder
             basePath={`private/${identityId}/${currentPath}`}
-            onCreated={loadFiles}
+            onCreated={loadCases}
             disabled={loading || !identityId}
           />
+
           <DeleteObjects
             selectedPaths={[...selected]}
-            onDeleted={loadFiles}
+            onDeleted={loadCases}
           />
 
           {identityId && (
@@ -164,42 +145,9 @@ export const Personal = () => {
 
       <Divider />
 
-      {/* 🔹 BREADCRUMB */}
-      <div className="breadcrumb">
-        <span
-          className="breadcrumb-link"
-          onClick={() => setPathStack([])}
-        >
-          Root
-        </span>
-
-        {pathStack.map((segment, index) => {
-          const name = segment.replace('/', '');
-          const isLast = index === pathStack.length - 1;
-
-          return (
-            <span key={index}>
-              {' / '}
-              <span
-                className={!isLast ? 'breadcrumb-link' : ''}
-                style={isLast ? { color: '#555' } : undefined}
-                onClick={
-                  !isLast
-                    ? () => setPathStack(pathStack.slice(0, index + 1))
-                    : undefined
-                }
-              >
-                {name}
-              </span>
-            </span>
-          );
-        })}
-      </div>
-
-      {/* 🔹 FILE TABLE */}
       <table className="storage-table">
         <thead>
-          <tr style={{ color: 'white' }}>
+          <tr>
             <th>
               <input
                 ref={selectAllRef}
@@ -208,60 +156,46 @@ export const Personal = () => {
                 onChange={toggleSelectAll}
               />
             </th>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Size</th>
-            <th>Last Modified</th>
+            <th onClick={() => sortBy("case_number")}>Case #</th>
+            <th onClick={() => sortBy("case_agents")}>Agents</th>
+            <th onClick={() => sortBy("case_title")}>Title</th>
+            <th onClick={() => sortBy("content_length")}>Size</th>
+            <th onClick={() => sortBy("created_at")}>Created</th>
+            <th onClick={() => sortBy("jurisdiction")}>Jurisdiction</th>
           </tr>
         </thead>
 
         <tbody>
           {loading && (
-            <tr className="loading-row">
-              <td colSpan={5}>Loading…</td>
+            <tr>
+              <td colSpan={7}>Loading…</td>
             </tr>
           )}
 
-          {!loading && files.length === 0 && (
-            <tr className="loading-row">
-              <td colSpan={5}>Empty folder</td>
+          {!loading && sortedFiles.length === 0 && (
+            <tr>
+              <td colSpan={7}>No cases found</td>
             </tr>
           )}
 
           {!loading &&
-            files.map(item => {
-              const name = item.path.split('/').filter(Boolean).pop()!;
-              const isFolder = item.path.endsWith('/');
-
-              return (
-                <tr
-                  key={item.path}
-                  className={isFolder ? 'folder' : ''}
-                  style={{ cursor: isFolder ? 'pointer' : 'default' }}
-                  onClick={() =>
-                    isFolder &&
-                    setPathStack(prev => [...prev, name + '/'])
-                  }
-                >
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(item.path)}
-                      onChange={() => toggleSelect(item.path)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
-                  <td>{isFolder ? '📁' : '📄'} {name}</td>
-                  <td>{isFolder ? 'Folder' : 'File'}</td>
-                  <td>{isFolder ? '—' : formatBytes(item.size)}</td>
-                  <td>
-                    {item.lastModified
-                      ? item.lastModified.toLocaleString()
-                      : '—'}
-                  </td>
-                </tr>
-              );
-            })}
+            sortedFiles.map(item => (
+              <tr key={item.case_number}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(item.case_number)}
+                    onChange={() => toggleSelect(item.case_number)}
+                  />
+                </td>
+                <td>{item.case_number}</td>
+                <td>{item.case_agents}</td>
+                <td>{item.case_title}</td>
+                <td>{formatBytes(item.content_length)}</td>
+                <td>{new Date(item.created_at).toLocaleString()}</td>
+                <td>{item.jurisdiction?.join(", ")}</td>
+              </tr>
+            ))}
         </tbody>
       </table>
     </>

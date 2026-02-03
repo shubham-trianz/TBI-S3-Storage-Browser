@@ -7,19 +7,14 @@ import {
   Button,
   TextField,
   Stack,
-} from '@mui/material';
-import { useState } from 'react';
-import { uploadData } from 'aws-amplify/storage';
-// import { useAuth } from '../auth-context';
-// import { fetchAuthSession } from 'aws-amplify/auth';
-// import { Button } from "@aws-amplify/ui-react";
-
-
+} from "@mui/material";
+import { useState, useEffect } from "react";
+import { uploadData } from "aws-amplify/storage";
+import { fetchAuthSession } from "aws-amplify/auth";
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  // uploadPath?: string;
   prefix: string;
   onUploaded?: () => void;
 };
@@ -31,15 +26,40 @@ export function UploadDialog({
   onUploaded,
 }: Props) {
   const [file, setFile] = useState<File | null>(null);
+  const [uploadedBy, setUploadedBy] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
   const [meta, setMeta] = useState({
-    caseId: '',
-    documentType: '',
-    uploadedBy: '',
-    description: '',
+    evidenceNumber: "",
+    description: "",
   });
+
+  /* 🔹 Load logged-in user */
+  useEffect(() => {
+    async function loadUser() {
+      const session = await fetchAuthSession();
+      const username =
+        session.tokens?.idToken?.payload?.email ??
+        session.tokens?.idToken?.payload?.["cognito:username"] ??
+        "";
+      setUploadedBy(String(username));
+    }
+    loadUser();
+  }, []);
+
+  const validateEvidenceNumber = (value: string) => {
+    return /^\d{4}-\d{7}-E\d+$/.test(value);
+  };
 
   const handleUpload = async () => {
     if (!file) return;
+
+    if (!validateEvidenceNumber(meta.evidenceNumber)) {
+      setError(
+        "Evidence Number must be in format: YYYY-XXXXXXX-EXXXXX"
+      );
+      return;
+    }
 
     try {
       const fullPath = `${prefix}${file.name}`;
@@ -49,7 +69,11 @@ export function UploadDialog({
         data: file,
         options: {
           contentType: file.type,
-          metadata: meta,
+          metadata: {
+            evidenceNumber: meta.evidenceNumber,
+            description: meta.description,
+            uploadedBy,
+          },
         },
       }).result;
 
@@ -57,14 +81,13 @@ export function UploadDialog({
       onClose();
     } catch (err) {
       console.error("Upload failed", err);
-      alert("Upload failed");
+      setError("Upload failed");
     }
   };
 
-
-return (
+  return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Upload file</DialogTitle>
+      <DialogTitle>Upload Evidence</DialogTitle>
 
       <DialogContent>
         <Stack spacing={2} mt={1}>
@@ -82,27 +105,18 @@ return (
           {file && <span>Selected: {file.name}</span>}
 
           <TextField
-            label="Case ID"
-            value={meta.caseId}
+            required
+            label="Kaseware Evidence Number"
+            placeholder="2025-1234567-E00001"
+            value={meta.evidenceNumber}
             onChange={(e) =>
-              setMeta({ ...meta, caseId: e.target.value })
+              setMeta({ ...meta, evidenceNumber: e.target.value })
             }
-          />
-
-          <TextField
-            label="Document Type"
-            value={meta.documentType}
-            onChange={(e) =>
-              setMeta({ ...meta, documentType: e.target.value })
+            error={
+              !!meta.evidenceNumber &&
+              !validateEvidenceNumber(meta.evidenceNumber)
             }
-          />
-
-          <TextField
-            label="Uploaded By"
-            value={meta.uploadedBy}
-            onChange={(e) =>
-              setMeta({ ...meta, uploadedBy: e.target.value })
-            }
+            helperText="Format: YYYY-XXXXXXX-EXXXXX"
           />
 
           <TextField
@@ -114,6 +128,16 @@ return (
               setMeta({ ...meta, description: e.target.value })
             }
           />
+
+          <TextField
+            label="Uploaded By"
+            value={uploadedBy}
+            disabled
+          />
+
+          {error && (
+            <span style={{ color: "red" }}>{error}</span>
+          )}
         </Stack>
       </DialogContent>
 

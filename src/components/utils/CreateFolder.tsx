@@ -1,12 +1,17 @@
 import { uploadData } from "aws-amplify/storage";
 import { Button } from "@aws-amplify/ui-react";
-import { useState } from "react";
+import { useState,useEffect } from "react";
+import { fetchAuthSession } from "aws-amplify/auth";
 import {
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
+  Stack,
+  MenuItem,
+  Box,
+  Chip,
 } from "@mui/material";
 
 type CreateFolderProps = {
@@ -15,50 +20,85 @@ type CreateFolderProps = {
   disabled?: boolean;
 };
 
+const JURISDICTIONS = [
+  ...Array.from({ length: 32 }, (_, i) => `${i + 1}st Judicial District`.replace("1st", i + 1 === 1 ? "1st" : `${i + 1}th`)),
+  "East US Attorneys Office",
+  "Middle US Attorneys Office",
+  "West US Attorneys Office",
+];
+
+
+
 export const CreateFolder = ({
   basePath,
   onCreated,
   disabled,
 }: CreateFolderProps) => {
   const [open, setOpen] = useState(false);
-  const [folderName, setFolderName] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleOpen = () => {
-    setFolderName("");
+  const [caseNumber, setCaseNumber] = useState("");
+  const [caseTitle, setCaseTitle] = useState("");
+  const [jurisdiction, setJurisdiction] = useState<string[]>([]);
+  const [caseAgents, setCaseAgents] = useState("");
+  const [uploadedBy, setUploadedBy] = useState("");
+  useEffect(() => {
+      async function loadUser() {
+        const session = await fetchAuthSession();
+        const username =
+          session.tokens?.idToken?.payload?.email ??
+          session.tokens?.idToken?.payload?.["cognito:username"] ??
+          "";
+        setUploadedBy(String(username));
+      }
+      loadUser();
+    }, []);
+  const validateCaseNumber = (value: string) =>
+    /^\d{4}-\d{7}$/.test(value);
+
+  const handleCreate = async () => {
     setError(null);
-    setOpen(true);
-  };
 
-  const handleCreateFolder = async () => {
-    setError(null);
-
-    if (!folderName) {
-      setError("Folder name is required");
+    if (!validateCaseNumber(caseNumber)) {
+      setError("Case Number must be in format YYYY-1234567");
       return;
     }
 
-    if (folderName.includes("/")) {
-      setError("Folder name cannot contain '/'");
+    if (!caseTitle.trim()) {
+      setError("Case Title is required");
       return;
     }
 
-    const folderPath = `${basePath}${folderName}/`;
+    if (jurisdiction.length === 0) {
+      setError("At least one Jurisdiction is required");
+      return;
+    }
+
+    const folderPath = `${basePath}${caseNumber}/`;
 
     try {
       setLoading(true);
-      // Create empty object to represent folder
+
       await uploadData({
-        path: folderPath,
-        data: new Blob([]),
+        path: `${folderPath}${caseNumber}_metadata.json`,
+        data: JSON.stringify({created: true}),
+        options: {
+          metadata: {
+            agent_email: uploadedBy,
+            case_number: caseNumber,
+            case_title: caseTitle,
+            jurisdiction: JSON.stringify(jurisdiction),
+            case_agents: caseAgents,
+          },
+        },
       }).result;
 
       setOpen(false);
       onCreated();
     } catch (err) {
-      console.error("Error creating folder", err);
-      setError("Failed to create folder");
+      console.error("Create case failed", err);
+      setError("Failed to create Case Evidence Repository");
     } finally {
       setLoading(false);
     }
@@ -69,35 +109,89 @@ export const CreateFolder = ({
       <Button
         size="small"
         variation="secondary"
-        onClick={handleOpen}
+        onClick={() => setOpen(true)}
         isDisabled={disabled}
       >
-        New Folder
+        Create Case
       </Button>
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Create Folder</DialogTitle>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Create Case Evidence Repository</DialogTitle>
+
         <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <TextField
+              required
+              label="Kaseware Case Number"
+              placeholder="2025-1234567"
+              value={caseNumber}
+              onChange={(e) => setCaseNumber(e.target.value)}
+            />
+
+            <TextField
+              required
+              label="Kaseware Case Title"
+              value={caseTitle}
+              onChange={(e) => setCaseTitle(e.target.value)}
+            />
+
           <TextField
-            autoFocus
-            fullWidth
-            // variant="outlined"
-            margin="normal"
-            label="Folder name"
-            value={folderName}
-            onChange={(e) => setFolderName(e.target.value)}
-            helperText={error ?? "Folder name cannot contain '/'"}
-            error={!!error}
-            disabled={loading}
-          />
+              select
+              required
+              label="Jurisdiction"
+              SelectProps={{
+                multiple: true,
+                renderValue: (selected) => (
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
+                    {(selected as string[]).map((value) => (
+                      <Chip key={value} label={value} size="small" />
+                    ))}
+                  </Box>
+                ),
+                MenuProps: {
+                  PaperProps: {
+                    style: { maxHeight: 240, width: 320 },
+                  },
+                  anchorOrigin: { vertical: "bottom", horizontal: "left" },
+                  transformOrigin: { vertical: "top", horizontal: "left" },
+                },
+              }}
+              value={jurisdiction}
+              onChange={(e) =>
+                setJurisdiction(
+                  typeof e.target.value === "string"
+                    ? e.target.value.split(",")
+                    : e.target.value
+                )
+              }
+            >
+              {JURISDICTIONS.map((j) => (
+                <MenuItem key={j} value={j}>
+                  {j}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <TextField
+              label="Case Agent(s)"
+              placeholder="Agent Smith, Agent Doe"
+              value={caseAgents}
+              onChange={(e) => setCaseAgents(e.target.value)}
+            />
+
+            {error && (
+              <span style={{ color: "red" }}>{error}</span>
+            )}
+          </Stack>
         </DialogContent>
+
         <DialogActions>
           <Button variation="link" onClick={() => setOpen(false)}>
             Cancel
           </Button>
           <Button
             variation="primary"
-            onClick={handleCreateFolder}
+            onClick={handleCreate}
             isDisabled={loading}
           >
             {loading ? "Creating..." : "Create"}
