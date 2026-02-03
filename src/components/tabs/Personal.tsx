@@ -5,22 +5,22 @@ import {
   Flex,
   Heading,
   Divider,
-  Text,
+  // Text,
   Button,
 } from "@aws-amplify/ui-react";
 import { UploadButton } from "../utils/UploadButton";
 import { DeleteObjects } from "../utils/DeleteObjects";
 import { CreateFolder } from '../utils/CreateFolder';
 
-type S3Item = {
-  eTag: string;
-  path: string;
-  size?: number;
-  lastModified?: Date;
-};
+// type S3Item = {
+//   eTag: string,
+//   path: string;
+//   size?: number;
+//   lastModified?: Date;
+// };
 
 export const Personal = () => {
-  const [files, setFiles] = useState<S3Item[]>([]);
+  const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
@@ -40,10 +40,10 @@ export const Personal = () => {
 
   /* ------------------ LIST HELPERS ------------------ */
   function getFirstLevelItems(
-    items: S3Item[],
+    items: any[],
     basePath: string
-  ): S3Item[] {
-    const map = new Map<string, S3Item>();
+  ): any[] {
+    const map = new Map<string, any>();
 
     for (const item of items) {
       const relative = item.path.replace(basePath, '');
