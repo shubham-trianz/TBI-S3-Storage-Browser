@@ -21,12 +21,12 @@ function App() {
   return (
     <Authenticator>
       {({ signOut, user }) => {
-        // const email = user?.signInDetails?.loginId || user?.username || '';
-        // const displayName = email.split('@')[0] || 'User';
+        const email = user?.signInDetails?.loginId || user?.username || '';
+        const displayName = email.split('@')[0] || 'User';
         return (
         <>
           <div className="header">
-            <h1>{`Digital Evidence Management System`}</h1>
+            <h1>{`Hello - ${displayName}`}</h1>
             <Button onClick={signOut}>Sign out</Button>
           </div>
           {/* <StorageBrowser /> */}

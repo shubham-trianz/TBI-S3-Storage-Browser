@@ -11,7 +11,9 @@ import {
 import { useState } from 'react';
 import { uploadData } from 'aws-amplify/storage';
 // import { useAuth } from '../auth-context';
-import { fetchAuthSession } from 'aws-amplify/auth';
+// import { fetchAuthSession } from 'aws-amplify/auth';
+// import { Button } from "@aws-amplify/ui-react";
+
 
 
 type Props = {

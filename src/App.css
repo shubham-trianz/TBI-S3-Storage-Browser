@@ -20,7 +20,7 @@
 }
 
 .storage-table thead {
-  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  background: hsl(190, 95%, 30%);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -75,7 +75,7 @@
 
 .breadcrumb-link {
   cursor: pointer;
-  color: #1976d2; /* MUI blue */
+  color: hsl(190, 95%, 30%); 
   text-decoration: none;
 }
 
