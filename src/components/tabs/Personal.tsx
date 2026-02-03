@@ -1,6 +1,16 @@
 import { list } from 'aws-amplify/storage';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { fetchAuthSession } from 'aws-amplify/auth';
+import {
+  Flex,
+  Heading,
+  Divider,
+  // Text,
+  Button,
+} from "@aws-amplify/ui-react";
+import { UploadButton } from "../utils/UploadButton";
+import { DeleteObjects } from "../utils/DeleteObjects";
+import { CreateFolder } from '../utils/CreateFolder';
 
 // type S3Item = {
 //   eTag: string,
@@ -13,102 +23,100 @@ export const Personal = () => {
   const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [identityId, setIdentityId] = useState<string | null>(null);
-  // const [currentPath, setCurrentPath] = useState<string>('');
   const [pathStack, setPathStack] = useState<string[]>([]);
-  const currentPath = pathStack.join('');
-  console.log('currentPath: ', currentPath)
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  const currentPath = pathStack.join('');
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
+  /* ------------------ AUTH INIT ------------------ */
   useEffect(() => {
     async function init() {
       const session = await fetchAuthSession();
-      console.log('identityId: ', session.identityId)
       setIdentityId(session.identityId ?? null);
     }
     init();
   }, []);
 
-  // function getFirstLevelItems(items: any[], basePath: string): any[] {
-  //   const seen = new Set<string>();
-
-  //       return items.filter(item => {
-  //           const relative = item.path.replace(basePath, '');
-  //           const parts = relative.split('/').filter(Boolean);
-
-  //           if (parts.length === 1) {
-  //           return true; // file
-  //           }
-
-  //           if (parts.length > 1) {
-  //           const folderPath = basePath + parts[0] + '/';
-  //           if (seen.has(folderPath)) return false;
-
-  //           seen.add(folderPath);
-  //           item.path = folderPath;
-  //           return true;
-  //           }
-
-  //           return false;
-  //       });
-  //   }
-
+  /* ------------------ LIST HELPERS ------------------ */
   function getFirstLevelItems(
-  items: any[],
-  basePath: string
-): any[] {
-  const map = new Map<string, any>();
+    items: any[],
+    basePath: string
+  ): any[] {
+    const map = new Map<string, any>();
 
-  for (const item of items) {
-    const relative = item.path.replace(basePath, '');
-    const parts = relative.split('/').filter(Boolean);
+    for (const item of items) {
+      const relative = item.path.replace(basePath, '');
+      const parts = relative.split('/').filter(Boolean);
 
-    // File at current level
-    if (parts.length === 1 && !item.path.endsWith('/')) {
-      map.set(item.path, item);
-      continue;
-    }
+      if (parts.length === 1 && !item.path.endsWith('/')) {
+        map.set(item.path, item);
+        continue;
+      }
 
-    // Folder at current level
-    if (parts.length >= 1) {
-      const folderPath = basePath + parts[0] + '/';
-
-      if (!map.has(folderPath)) {
-        map.set(folderPath, {
-          path: folderPath,
-          size: 0,
-        });
+      if (parts.length >= 1) {
+        const folderPath = basePath + parts[0] + '/';
+        if (!map.has(folderPath)) {
+          map.set(folderPath, {
+            path: folderPath,
+            eTag: '',
+          });
+        }
       }
     }
+
+    return Array.from(map.values());
   }
 
-  return Array.from(map.values());
-}
-
-
-  useEffect(() => {
+  /* ------------------ LOAD FILES ------------------ */
+  const loadFiles = useCallback(async () => {
     if (!identityId) return;
 
-    async function loadFiles() {
-      setLoading(true);
-      setFiles([]);
+    setLoading(true);
+    setFiles([]);
+    setSelected(new Set());
 
-      try {
-        const basePath = `private/${identityId}/${currentPath}`;
-
-        const result = await list({
-          path: basePath,
-        });
-        console.log('result: ', result)
-        setFiles(getFirstLevelItems(result.items, basePath));
-      } catch (err) {
-        console.error('Error listing files', err);
-      } finally {
-        setLoading(false);
-      }
+    try {
+      const basePath = `private/${identityId}/${currentPath}`;
+      const result = await list({ path: basePath });
+      setFiles(getFirstLevelItems(result.items, basePath));
+    } catch (err) {
+      console.error('Error listing files', err);
+    } finally {
+      setLoading(false);
     }
-
-    loadFiles();
   }, [identityId, currentPath]);
 
+  useEffect(() => {
+    loadFiles();
+  }, [loadFiles]);
+
+  /* ------------------ SELECTION ------------------ */
+  const toggleSelect = (path: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(path) ? next.delete(path) : next.add(path);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === files.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(files.map(f => f.path)));
+    }
+  };
+
+  /* Update indeterminate state */
+  useEffect(() => {
+    if (!selectAllRef.current) return;
+
+    selectAllRef.current.indeterminate =
+      selected.size > 0 && selected.size < files.length;
+  }, [selected, files]);
+
+  /* ------------------ UTILS ------------------ */
   function formatBytes(bytes?: number) {
     if (!bytes) return '—';
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -116,25 +124,50 @@ export const Personal = () => {
     return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
   }
 
-  // if (loading) return <p>Loading...</p>;
-
+  /* ------------------ RENDER ------------------ */
   return (
     <>
-      {/* <div>
-        Root /
-        {pathStack.map((p, i) => (
-          <span
-            key={i}
-            style={{ cursor: 'pointer' }}
-            onClick={() => setPathStack(pathStack.slice(0, i + 1))}
+      {/* 🔹 FILE PANE HEADER */}
+      <Flex
+        justifyContent="space-between"
+        alignItems="center"
+        padding="0.75rem 0"
+      >
+        <Heading level={5}>Files</Heading>
+
+        <Flex gap="0.5rem">
+          <Button
+            size="small"
+            variation="secondary"
+            onClick={loadFiles}
+            isLoading={loading}
           >
-            {p}
-          </span>
-        ))}
-      </div> */}
-      {/* <div style={{ marginBottom: 10, textAlign: 'left' }}>
+            Refresh
+          </Button>
+          <CreateFolder
+            basePath={`private/${identityId}/${currentPath}`}
+            onCreated={loadFiles}
+            disabled={loading || !identityId}
+          />
+          <DeleteObjects
+            selectedPaths={[...selected]}
+            onDeleted={loadFiles}
+          />
+
+          {identityId && (
+            <UploadButton
+              prefix={`private/${identityId}/${currentPath}`}
+            />
+          )}
+        </Flex>
+      </Flex>
+
+      <Divider />
+
+      {/* 🔹 BREADCRUMB */}
+      <div className="breadcrumb">
         <span
-          style={{ cursor: 'pointer', color: 'blue' }}
+          className="breadcrumb-link"
           onClick={() => setPathStack([])}
         >
           Root
@@ -142,14 +175,18 @@ export const Personal = () => {
 
         {pathStack.map((segment, index) => {
           const name = segment.replace('/', '');
+          const isLast = index === pathStack.length - 1;
 
           return (
             <span key={index}>
               {' / '}
               <span
-                style={{ cursor: 'pointer', color: 'blue', }}
-                onClick={() =>
-                  setPathStack(pathStack.slice(0, index + 1))
+                className={!isLast ? 'breadcrumb-link' : ''}
+                style={isLast ? { color: '#555' } : undefined}
+                onClick={
+                  !isLast
+                    ? () => setPathStack(pathStack.slice(0, index + 1))
+                    : undefined
                 }
               >
                 {name}
@@ -157,41 +194,20 @@ export const Personal = () => {
             </span>
           );
         })}
-      </div> */}
-      <div className="breadcrumb">
-  <span
-    className="breadcrumb-link"
-    onClick={() => setPathStack([])}
-  >
-    Root
-  </span>
+      </div>
 
-  {pathStack.map((segment, index) => {
-    const name = segment.replace('/', '');
-    const isLast = index === pathStack.length - 1;
-
-    return (
-      <span key={index}>
-        {' / '}
-        <span
-        className={!isLast ? 'breadcrumb-link' : ''}
-        style={isLast ? { color: '#555' } : undefined}
-        onClick={
-          !isLast
-            ? () => setPathStack(pathStack.slice(0, index + 1))
-            : undefined
-        }
-      >
-        {name}
-      </span>
-      </span>
-    );
-  })}
-</div>
-
+      {/* 🔹 FILE TABLE */}
       <table className="storage-table">
         <thead>
-          <tr style={{color: 'white'}}>
+          <tr style={{ color: 'white' }}>
+            <th>
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={files.length > 0 && selected.size === files.length}
+                onChange={toggleSelectAll}
+              />
+            </th>
             <th>Name</th>
             <th>Type</th>
             <th>Size</th>
@@ -202,13 +218,13 @@ export const Personal = () => {
         <tbody>
           {loading && (
             <tr className="loading-row">
-              <td colSpan={4}>Loading…</td>
+              <td colSpan={5}>Loading…</td>
             </tr>
           )}
 
           {!loading && files.length === 0 && (
             <tr className="loading-row">
-              <td colSpan={4}>Empty folder</td>
+              <td colSpan={5}>Empty folder</td>
             </tr>
           )}
 
@@ -227,8 +243,16 @@ export const Personal = () => {
                     setPathStack(prev => [...prev, name + '/'])
                   }
                 >
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(item.path)}
+                      onChange={() => toggleSelect(item.path)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </td>
                   <td>{isFolder ? '📁' : '📄'} {name}</td>
-                  <td className="type">{isFolder ? 'Folder' : 'File'}</td>
+                  <td>{isFolder ? 'Folder' : 'File'}</td>
                   <td>{isFolder ? '—' : formatBytes(item.size)}</td>
                   <td>
                     {item.lastModified
@@ -240,11 +264,6 @@ export const Personal = () => {
             })}
         </tbody>
       </table>
-
-
-
-      <br />
-      {/* <UploadButton /> */}
     </>
   );
 };
