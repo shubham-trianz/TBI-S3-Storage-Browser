@@ -5,7 +5,7 @@ import { Tabs } from "@aws-amplify/ui-react";
 // import { UploadButton } from "./utils/UploadButton";
 import { Personal } from "./tabs/Personal";
 import Shared from "./tabs/Shared";
-import Recieved from "./tabs/Recieved";
+import Received from "./tabs/Received";
 export const MyStorageBrowser = () => {
   const [identityId, setIdentityId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("private");
@@ -33,7 +33,7 @@ return (
             content: <Personal />,
           },
           { label: "Shared", value: "shared", content: <Shared /> },
-          { label: "Recieved", value: "received", content: <Recieved /> },
+          { label: "Received", value: "received", content: <Received /> },
         ]}
       />
     </>
