@@ -138,7 +138,6 @@ export const Personal = () => {
         <Flex gap="0.5rem">
           <Button
             size="small"
-            variation="secondary"
             onClick={loadFiles}
             isLoading={loading}
           >

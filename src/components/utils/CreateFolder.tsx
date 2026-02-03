@@ -68,7 +68,6 @@ export const CreateFolder = ({
     <>
       <Button
         size="small"
-        variation="secondary"
         onClick={handleOpen}
         isDisabled={disabled}
       >
