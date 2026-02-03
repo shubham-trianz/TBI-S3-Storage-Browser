@@ -81,6 +81,8 @@ export const CreateFolder = ({
           <TextField
             autoFocus
             fullWidth
+            // variant="outlined"
+            margin="normal"
             label="Folder name"
             value={folderName}
             onChange={(e) => setFolderName(e.target.value)}

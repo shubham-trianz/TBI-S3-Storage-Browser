@@ -1,6 +1,6 @@
-import { remove } from "aws-amplify/storage";
+import { remove, list } from "aws-amplify/storage";
 import { Button, Flex } from "@aws-amplify/ui-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -24,15 +24,56 @@ export const DeleteObjects = ({
   const [errorOpen, setErrorOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleDeleteClick = () => {
+  useEffect(() => {
+    if (!errorOpen) return;
+
+    const timer = setTimeout(() => {
+      setErrorOpen(false);
+      setErrorMsg(null);
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, [errorOpen]);
+
+  const handleDeleteClick = async () => {
     if (selectedPaths.length === 0) return;
-    setConfirmOpen(true);
+
+    try {
+      
+      for (const path of selectedPaths) {
+        if (path.endsWith("/")) {
+          const result = await list({ path });
+
+          // Ignore the folder marker itself
+          const hasFiles = result.items.some(
+            (item) => item.path !== path
+          );
+
+          if (hasFiles) {
+            setErrorMsg(
+              "Cannot delete folder because it contains files."
+            );
+            setErrorOpen(true);
+            return; 
+          }
+        }
+      }
+
+      setConfirmOpen(true);
+    } catch (err) {
+      console.error("Folder check failed", err);
+      setErrorMsg("Unable to validate folder contents");
+      setErrorOpen(true);
+    }
   };
 
   const performDelete = async () => {
     setConfirmOpen(false);
+
     try {
-      await Promise.all(selectedPaths.map((path) => remove({ path })));
+      await Promise.all(
+        selectedPaths.map((path) => remove({ path }))
+      );
       onDeleted();
     } catch (err) {
       console.error("Error deleting objects", err);
@@ -53,31 +94,46 @@ export const DeleteObjects = ({
           Delete
         </Button>
       </Flex>
-
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+      <Dialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+      >
         <DialogTitle>Confirm delete</DialogTitle>
         <DialogContent>
           <Typography>
-            Delete {selectedPaths.length} item(s)? This action cannot be undone.
+            Delete {selectedPaths.length} item(s)? This action
+            cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button variation="link" onClick={() => setConfirmOpen(false)}>
+          <Button
+            variation="link"
+            onClick={() => setConfirmOpen(false)}
+          >
             Cancel
           </Button>
-          <Button variation="destructive" onClick={performDelete}>
+          <Button
+            variation="destructive"
+            onClick={performDelete}
+          >
             Delete
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={errorOpen} onClose={() => setErrorOpen(false)}>
-        <DialogTitle>Delete failed</DialogTitle>
+      <Dialog
+        open={errorOpen}
+        onClose={() => setErrorOpen(false)}
+      >
+        <DialogTitle>Deletion not allowed</DialogTitle>
         <DialogContent>
           <Typography>{errorMsg}</Typography>
         </DialogContent>
         <DialogActions>
-          <Button variation="primary" onClick={() => setErrorOpen(false)}>
+          <Button
+            variation="primary"
+            onClick={() => setErrorOpen(false)}
+          >
             Close
           </Button>
         </DialogActions>
