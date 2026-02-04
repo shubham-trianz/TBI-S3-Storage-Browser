@@ -19,25 +19,25 @@ export const Personal = () => {
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [cases, setCases] = useState([]);
-  const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+  // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   
   const currentPath = pathStack.join('');
   const isRoot = pathStack.length === 0;
 
   const selectAllRef = useRef<HTMLInputElement>(null);
 
-  const showNotification = (message: string, type: 'error' | 'success' = 'error', duration = 4000) => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), duration);
-  };
+  // const showNotification = (message: string, type: 'error' | 'success' = 'error', duration = 4000) => {
+  //   setNotification({ message, type });
+  //   setTimeout(() => setNotification(null), duration);
+  // };
 
   // Check if folder/case already exists (refreshed data)
-  const folderExists = (folderName: string): boolean => {
-    if (isRoot) {
-      return cases.some(c => c.case_number.toLowerCase() === folderName.toLowerCase());
-    }
-    return files.some(f => f.path.toLowerCase() === `${currentPath}${folderName}/`.toLowerCase());
-  };
+  // const folderExists = (folderName: string): boolean => {
+  //   if (isRoot) {
+  //     return cases.some(c => c.case_number.toLowerCase() === folderName.toLowerCase());
+  //   }
+  //   return files.some(f => f.path.toLowerCase() === `${currentPath}${folderName}/`.toLowerCase());
+  // };
 
   const loadCases = useCallback(async () => {
     try {
@@ -274,7 +274,7 @@ export const Personal = () => {
   /* ...existing code... */
   return (
     <>
-      {notification && (
+      {/* {notification && (
         <div
           style={{
             position: 'fixed',
@@ -291,9 +291,9 @@ export const Personal = () => {
         >
           {notification.message}
         </div>
-      )}
+      )} */}
 
-      <style>{`
+      {/* <style>{`
         @keyframes slideIn {
           from {
             transform: translateX(400px);
@@ -304,7 +304,7 @@ export const Personal = () => {
             opacity: 1;
           }
         }
-      `}</style>
+      `}</style> */}
 
       <Flex
         justifyContent="space-between"
@@ -328,9 +328,9 @@ export const Personal = () => {
                 loadCases();
               }}
               disabled={loading || !identityId}
-              onDuplicateError={showNotification}
-              folderExists={folderExists}
-              refreshCases={loadCases}
+              // onDuplicateError={showNotification}
+              // folderExists={folderExists}
+              // refreshCases={loadCases}
             />
             )
             :(
@@ -340,9 +340,9 @@ export const Personal = () => {
                 loadFiles();
               }}
               disabled={loading || !identityId}
-              onDuplicateError={showNotification}
-              folderExists={folderExists}
-              refreshFiles={loadFiles}
+              // onDuplicateError={showNotification}
+              // folderExists={folderExists}
+              // refreshFiles={loadFiles}
             />
             )
         }
