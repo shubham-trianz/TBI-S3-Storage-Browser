@@ -13,12 +13,18 @@ type CreateFolderProps = {
   basePath: string;
   onCreated: () => void;
   disabled?: boolean;
+  onDuplicateError?: (message: string, type: 'error' | 'success') => void;
+  folderExists?: (folderName: string) => boolean;
+  refreshFiles?: () => Promise<void>;
 };
 
 export const CreateFolder = ({
   basePath,
   onCreated,
   disabled,
+  onDuplicateError,
+  folderExists,
+  refreshFiles,
 }: CreateFolderProps) => {
   const [open, setOpen] = useState(false);
   const [folderName, setFolderName] = useState("");
@@ -44,16 +50,31 @@ export const CreateFolder = ({
       return;
     }
 
-    const folderPath = `${basePath}${folderName}/`;
-
     try {
       setLoading(true);
-      // Create empty object to represent folder
+
+      // Refresh files from DB BEFORE checking for duplicates
+      if (refreshFiles) {
+        await refreshFiles();
+      }
+
+      // Now check if folder already exists with fresh data
+      if (folderExists && folderExists(folderName)) {
+        const message = `"${folderName}" already exists. Try with another name?`;
+        setError(message);
+        onDuplicateError?.(message, 'error');
+        setLoading(false);
+        return;
+      }
+
+      const folderPath = `${basePath}${folderName}/`;
+
       await uploadData({
         path: folderPath,
         data: new Blob([]),
       }).result;
 
+      onDuplicateError?.(`"${folderName}" created successfully`, 'success');
       setOpen(false);
       onCreated();
     } catch (err) {
@@ -73,14 +94,12 @@ export const CreateFolder = ({
       >
         New Folder
       </Button>
-
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
         <DialogTitle>Create Folder</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             fullWidth
-            // variant="outlined"
             margin="normal"
             label="Folder name"
             value={folderName}

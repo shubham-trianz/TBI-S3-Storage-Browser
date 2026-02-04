@@ -5,20 +5,12 @@ import {
   Flex,
   Heading,
   Divider,
-  // Text,
   Button,
 } from "@aws-amplify/ui-react";
 import { UploadButton } from "../utils/UploadButton";
 import { DeleteObjects } from "../utils/DeleteObjects";
 import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
-
-// type S3Item = {
-//   eTag: string,
-//   path: string;
-//   size?: number;
-//   lastModified?: Date;
-// };
 
 export const Personal = () => {
   const [files, setFiles] = useState<any[]>([]);
@@ -27,19 +19,33 @@ export const Personal = () => {
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [cases, setCases] = useState([]);
-
+  // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+  
   const currentPath = pathStack.join('');
   const isRoot = pathStack.length === 0;
 
   const selectAllRef = useRef<HTMLInputElement>(null);
 
+  // const showNotification = (message: string, type: 'error' | 'success' = 'error', duration = 4000) => {
+  //   setNotification({ message, type });
+  //   setTimeout(() => setNotification(null), duration);
+  // };
+
+  // Check if folder/case already exists (refreshed data)
+  // const folderExists = (folderName: string): boolean => {
+  //   if (isRoot) {
+  //     return cases.some(c => c.case_number.toLowerCase() === folderName.toLowerCase());
+  //   }
+  //   return files.some(f => f.path.toLowerCase() === `${currentPath}${folderName}/`.toLowerCase());
+  // };
+
   const loadCases = useCallback(async () => {
+    try {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
 
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-      console.log('apiBaseUrl: ', apiBaseUrl)    
-      // console.log('session.tokens: ', token)
+      console.log('apiBaseUrl: ', apiBaseUrl)
       const res = await fetch(
         `${apiBaseUrl}/cases`,
         {
@@ -56,34 +62,14 @@ export const Personal = () => {
       const response = await res.json();
       console.log('response: ', response)
       setCases(response)
-    }, [])
+      return response;
+    } catch (err) {
+      console.error('Error loading cases:', err);
+      return [];
+    }
+  }, [])
 
   useEffect(() => {
-    // const getCases = async () => {
-    //   const session = await fetchAuthSession();
-    //   const token = session.tokens?.idToken?.toString();
-
-    //   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-    //   console.log('apiBaseUrl: ', apiBaseUrl)    
-    //   // console.log('session.tokens: ', token)
-    //   const res = await fetch(
-    //     `${apiBaseUrl}/cases`,
-    //     {
-    //       headers: {
-    //         Authorization: `Bearer ${token}`,
-    //         "Content-Type": "application/json"
-    //       }
-    //     },
-    //   );
-    //   if (!res.ok) {
-    //     throw new Error(`Request failed: ${res.status}`);
-    //   }
-    
-    //   const response = await res.json();
-    //   console.log('response: ', response)
-    //   setCases(response)
-    // }
-    // getCases()
     loadCases()
   }, [loadCases])
 
@@ -96,7 +82,7 @@ export const Personal = () => {
     init();
   }, []);
 
-  /* ------------------ LIST HELPERS ------------------ */
+  /* ...existing code... */
   function getFirstLevelItems(
     items: any[],
     basePath: string
@@ -126,7 +112,7 @@ export const Personal = () => {
     return Array.from(map.values());
   }
 
-  /* ------------------ LOAD FILES ------------------ */
+  /* ...existing code... */
   const loadFiles = useCallback(async () => {
     if (!identityId) return;
 
@@ -151,7 +137,7 @@ export const Personal = () => {
     loadFiles();
   }, [loadFiles]);
 
-  /* ------------------ SELECTION ------------------ */
+  /* ...existing code... */
   const toggleSelect = (path: string) => {
     setSelected(prev => {
       const next = new Set(prev);
@@ -168,7 +154,7 @@ export const Personal = () => {
     }
   };
 
-  /* Update indeterminate state */
+  /* ...existing code... */
   useEffect(() => {
     if (!selectAllRef.current) return;
 
@@ -176,7 +162,7 @@ export const Personal = () => {
       selected.size > 0 && selected.size < files.length;
   }, [selected, files]);
 
-  /* ------------------ UTILS ------------------ */
+  /* ...existing code... */
   function formatBytes(bytes?: number) {
     if (!bytes) return '—';
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -223,34 +209,33 @@ export const Personal = () => {
   );
 
   const renderCaseRow = (item: any) => {
-  const name = item.case_number;
+    const name = item.case_number;
 
-  return (
-    <tr
-      key={`${item.user_name}-${item.case_number}`}
-      className="folder"
-      style={{ cursor: 'pointer' }}
-      onClick={() => {
-        setSelected(new Set());
-        setPathStack([`${name}/`]); // jump into case
-      }}
-    >
-      <td>
-        <input
-          type="checkbox"
-          checked={selected.has(item.source_key)}
-          onClick={e => e.stopPropagation()}
-          onChange={() => toggleSelect(item.source_key)}
-        />
-      </td>
-      <td>📁 {name}</td>
-      <td>{item.case_title}</td>
-      <td>{item.case_agents}</td>
-      <td>{item.jurisdiction}</td>
-    </tr>
-  );
-};
-
+    return (
+      <tr
+        key={`${item.user_name}-${item.case_number}`}
+        className="folder"
+        style={{ cursor: 'pointer' }}
+        onClick={() => {
+          setSelected(new Set());
+          setPathStack([`${name}/`]);
+        }}
+      >
+        <td>
+          <input
+            type="checkbox"
+            checked={selected.has(item.source_key)}
+            onClick={e => e.stopPropagation()}
+            onChange={() => toggleSelect(item.source_key)}
+          />
+        </td>
+        <td>📁 {name}</td>
+        <td>{item.case_title}</td>
+        <td>{item.case_agents}</td>
+        <td>{item.jurisdiction}</td>
+      </tr>
+    );
+  };
 
   const renderFileRow = (item: any) => {
     const name = item.path.split('/').filter(Boolean).pop()!;
@@ -286,13 +271,41 @@ export const Personal = () => {
     );
   };
 
-
-
-
-  /* ------------------ RENDER ------------------ */
+  /* ...existing code... */
   return (
     <>
-      {/* 🔹 FILE PANE HEADER */}
+      {/* {notification && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            backgroundColor: notification.type === 'error' ? '#f44336' : '#4caf50',
+            color: 'white',
+            padding: '12px 16px',
+            borderRadius: '4px',
+            zIndex: 1000,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            animation: 'slideIn 0.3s ease-in-out',
+          }}
+        >
+          {notification.message}
+        </div>
+      )} */}
+
+      {/* <style>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}</style> */}
+
       <Flex
         justifyContent="space-between"
         alignItems="center"
@@ -311,15 +324,25 @@ export const Personal = () => {
           {isRoot ? (
             <CreateCase
               basePath={`private/${identityId}/${currentPath}`}
-              onCreated={loadCases}
+              onCreated={() => {
+                loadCases();
+              }}
               disabled={loading || !identityId}
+              // onDuplicateError={showNotification}
+              // folderExists={folderExists}
+              // refreshCases={loadCases}
             />
             )
             :(
               <CreateFolder
               basePath={`private/${identityId}/${currentPath}`}
-              onCreated={loadFiles}
+              onCreated={() => {
+                loadFiles();
+              }}
               disabled={loading || !identityId}
+              // onDuplicateError={showNotification}
+              // folderExists={folderExists}
+              // refreshFiles={loadFiles}
             />
             )
         }
@@ -331,6 +354,7 @@ export const Personal = () => {
           {identityId && !isRoot && (
             <UploadButton
               prefix={`private/${identityId}/${currentPath}`}
+              onUploadComplete={loadFiles}
             />
           )}
         </Flex>
@@ -338,7 +362,6 @@ export const Personal = () => {
 
       <Divider />
 
-      {/* 🔹 BREADCRUMB */}
       <div className="breadcrumb">
         <span
           className="breadcrumb-link"
@@ -370,30 +393,12 @@ export const Personal = () => {
         })}
       </div>
 
-      {/* 🔹 FILE TABLE */}
       <table className="storage-table">
         {isRoot ? (
           <CasesTableHeader />
         ) : (
           <FilesTableHeader />
         )}
-        {/* <thead>
-          <tr style={{ color: 'white' }}>
-            <th>
-              <input
-                ref={selectAllRef}
-                type="checkbox"
-                checked={files.length > 0 && selected.size === files.length}
-                onChange={toggleSelectAll}
-              />
-            </th>
-            <th>Case Number</th>
-            <th>Case Title</th>
-            <th>Case Agent</th>
-            <th>Jurisdiction</th>
-            <th>Last Modified</th>
-          </tr>
-        </thead> */}
 
         <tbody>
           {loading && (
@@ -407,39 +412,6 @@ export const Personal = () => {
               <td colSpan={5}>Empty folder</td>
             </tr>
           )}
-
-          {/* {!loading &&
-            cases.map(item => {
-              // const name = item.path.split('/').filter(Boolean).pop()!;
-              // const isFolder = item.path.endsWith('/');
-              const name = item.case_number
-              return (
-                <tr
-                  key={`${item.user_name}-${item.case_number}`}
-                  className='folder'
-                  style={{ cursor: 'pointer'}}
-                  onClick={() =>
-                    
-                    setPathStack(prev => [...prev, name + '/'])
-                  }
-                >
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(item.source_key)}
-                      onChange={() => toggleSelect(item.source_key)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
-                  <td>{'📁'} {name}</td>
-                  <td>{item.case_title}</td>
-                  <td>{item.case_agents}</td>
-                  <td>
-                   {item.jurisdiction}
-                  </td>
-                </tr>
-              );
-            })} */}
 
           {!loading && isRoot && cases.map(renderCaseRow)}
           {!loading && !isRoot && files.map(renderFileRow)}
