@@ -25,9 +25,42 @@ export const Personal = () => {
   const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [cases, setCases] = useState([]);
 
   const currentPath = pathStack.join('');
+  const isRoot = pathStack.length === 0;
+
   const selectAllRef = useRef<HTMLInputElement>(null);
+
+
+  useEffect(() => {
+    const getCases = async () => {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+      console.log('apiBaseUrl: ', apiBaseUrl)    
+      // console.log('session.tokens: ', token)
+      const res = await fetch(
+        `${apiBaseUrl}/cases`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        },
+      );
+      if (!res.ok) {
+        throw new Error(`Request failed: ${res.status}`);
+      }
+    
+      const response = await res.json();
+      console.log('response: ', response)
+      setCases(response)
+    }
+    getCases()
+    
+  }, [])
 
   /* ------------------ AUTH INIT ------------------ */
   useEffect(() => {
@@ -78,7 +111,9 @@ export const Personal = () => {
 
     try {
       const basePath = `private/${identityId}/${currentPath}`;
+      console.log('base path: ', basePath)
       const result = await list({ path: basePath });
+      console.log('result: ', result)
       setFiles(getFirstLevelItems(result.items, basePath));
     } catch (err) {
       console.error('Error listing files', err);
@@ -123,6 +158,111 @@ export const Personal = () => {
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
   }
+
+  const CasesTableHeader = () => (
+    <thead>
+      <tr>
+        <th>
+          <input
+            ref={selectAllRef}
+            type="checkbox"
+            checked={cases.length > 0 && selected.size === cases.length}
+            onChange={toggleSelectAll}
+          />
+        </th>
+        <th>Case Number</th>
+        <th>Case Title</th>
+        <th>Case Agent</th>
+        <th>Jurisdiction</th>
+      </tr>
+    </thead>
+  );
+
+  const FilesTableHeader = () => (
+    <thead>
+      <tr>
+        <th>
+          <input
+            ref={selectAllRef}
+            type="checkbox"
+            checked={files.length > 0 && selected.size === files.length}
+            onChange={toggleSelectAll}
+          />
+        </th>
+        <th>Name</th>
+      <th>Type</th>
+      <th>Size</th>
+      <th>Last Modified</th>
+      </tr>
+    </thead>
+  );
+
+  const renderCaseRow = (item: any) => {
+  const name = item.case_number;
+
+  return (
+    <tr
+      key={`${item.user_name}-${item.case_number}`}
+      className="folder"
+      style={{ cursor: 'pointer' }}
+      onClick={() => {
+        setSelected(new Set());
+        setPathStack([`${name}/`]); // jump into case
+      }}
+    >
+      <td>
+        <input
+          type="checkbox"
+          checked={selected.has(item.source_key)}
+          onClick={e => e.stopPropagation()}
+          onChange={() => toggleSelect(item.source_key)}
+        />
+      </td>
+      <td>📁 {name}</td>
+      <td>{item.case_title}</td>
+      <td>{item.case_agents}</td>
+      <td>{item.jurisdiction}</td>
+    </tr>
+  );
+};
+
+
+  const renderFileRow = (item: any) => {
+    const name = item.path.split('/').filter(Boolean).pop()!;
+    const isFolder = item.path.endsWith('/');
+
+    return (
+      <tr
+        key={item.path}
+        className={isFolder ? 'folder' : ''}
+        style={{ cursor: isFolder ? 'pointer' : 'default' }}
+        onClick={() =>
+          isFolder &&
+          setPathStack(prev => [...prev, `${name}/`])
+        }
+      >
+        <td>
+          <input
+            type="checkbox"
+            checked={selected.has(item.path)}
+            onClick={e => e.stopPropagation()}
+            onChange={() => toggleSelect(item.path)}
+          />
+        </td>
+        <td>{isFolder ? '📁' : '📄'} {name}</td>
+        <td>{isFolder ? 'Folder' : 'File'}</td>
+        <td>{isFolder ? '—' : formatBytes(item.size)}</td>
+        <td>
+          {item.lastModified
+            ? item.lastModified.toLocaleString()
+            : '—'}
+        </td>
+      </tr>
+    );
+  };
+
+
+
 
   /* ------------------ RENDER ------------------ */
   return (
@@ -197,7 +337,12 @@ export const Personal = () => {
 
       {/* 🔹 FILE TABLE */}
       <table className="storage-table">
-        <thead>
+        {isRoot ? (
+          <CasesTableHeader />
+        ) : (
+          <FilesTableHeader />
+        )}
+        {/* <thead>
           <tr style={{ color: 'white' }}>
             <th>
               <input
@@ -207,12 +352,13 @@ export const Personal = () => {
                 onChange={toggleSelectAll}
               />
             </th>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Size</th>
+            <th>Case Number</th>
+            <th>Case Title</th>
+            <th>Case Agent</th>
+            <th>Jurisdiction</th>
             <th>Last Modified</th>
           </tr>
-        </thead>
+        </thead> */}
 
         <tbody>
           {loading && (
@@ -227,40 +373,41 @@ export const Personal = () => {
             </tr>
           )}
 
-          {!loading &&
-            files.map(item => {
-              const name = item.path.split('/').filter(Boolean).pop()!;
-              const isFolder = item.path.endsWith('/');
-
+          {/* {!loading &&
+            cases.map(item => {
+              // const name = item.path.split('/').filter(Boolean).pop()!;
+              // const isFolder = item.path.endsWith('/');
+              const name = item.case_number
               return (
                 <tr
-                  key={item.path}
-                  className={isFolder ? 'folder' : ''}
-                  style={{ cursor: isFolder ? 'pointer' : 'default' }}
+                  key={`${item.user_name}-${item.case_number}`}
+                  className='folder'
+                  style={{ cursor: 'pointer'}}
                   onClick={() =>
-                    isFolder &&
+                    
                     setPathStack(prev => [...prev, name + '/'])
                   }
                 >
                   <td>
                     <input
                       type="checkbox"
-                      checked={selected.has(item.path)}
-                      onChange={() => toggleSelect(item.path)}
+                      checked={selected.has(item.source_key)}
+                      onChange={() => toggleSelect(item.source_key)}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>
-                  <td>{isFolder ? '📁' : '📄'} {name}</td>
-                  <td>{isFolder ? 'Folder' : 'File'}</td>
-                  <td>{isFolder ? '—' : formatBytes(item.size)}</td>
+                  <td>{'📁'} {name}</td>
+                  <td>{item.case_title}</td>
+                  <td>{item.case_agents}</td>
                   <td>
-                    {item.lastModified
-                      ? item.lastModified.toLocaleString()
-                      : '—'}
+                   {item.jurisdiction}
                   </td>
                 </tr>
               );
-            })}
+            })} */}
+
+          {!loading && isRoot && cases.map(renderCaseRow)}
+          {!loading && !isRoot && files.map(renderFileRow)}
         </tbody>
       </table>
     </>
