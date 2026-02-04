@@ -10,6 +10,7 @@ import {
 } from "@aws-amplify/ui-react";
 import { UploadButton } from "../utils/UploadButton";
 import { DeleteObjects } from "../utils/DeleteObjects";
+import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
 
 // type S3Item = {
@@ -32,9 +33,7 @@ export const Personal = () => {
 
   const selectAllRef = useRef<HTMLInputElement>(null);
 
-
-  useEffect(() => {
-    const getCases = async () => {
+  const loadCases = useCallback(async () => {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString();
 
@@ -57,10 +56,36 @@ export const Personal = () => {
       const response = await res.json();
       console.log('response: ', response)
       setCases(response)
-    }
-    getCases()
+    }, [])
+
+  useEffect(() => {
+    // const getCases = async () => {
+    //   const session = await fetchAuthSession();
+    //   const token = session.tokens?.idToken?.toString();
+
+    //   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+    //   console.log('apiBaseUrl: ', apiBaseUrl)    
+    //   // console.log('session.tokens: ', token)
+    //   const res = await fetch(
+    //     `${apiBaseUrl}/cases`,
+    //     {
+    //       headers: {
+    //         Authorization: `Bearer ${token}`,
+    //         "Content-Type": "application/json"
+    //       }
+    //     },
+    //   );
+    //   if (!res.ok) {
+    //     throw new Error(`Request failed: ${res.status}`);
+    //   }
     
-  }, [])
+    //   const response = await res.json();
+    //   console.log('response: ', response)
+    //   setCases(response)
+    // }
+    // getCases()
+    loadCases()
+  }, [loadCases])
 
   /* ------------------ AUTH INIT ------------------ */
   useEffect(() => {
@@ -283,17 +308,27 @@ export const Personal = () => {
           >
             Refresh
           </Button>
-          <CreateFolder
-            basePath={`private/${identityId}/${currentPath}`}
-            onCreated={loadFiles}
-            disabled={loading || !identityId}
-          />
+          {isRoot ? (
+            <CreateCase
+              basePath={`private/${identityId}/${currentPath}`}
+              onCreated={loadCases}
+              disabled={loading || !identityId}
+            />
+            )
+            :(
+              <CreateFolder
+              basePath={`private/${identityId}/${currentPath}`}
+              onCreated={loadFiles}
+              disabled={loading || !identityId}
+            />
+            )
+        }
           <DeleteObjects
             selectedPaths={[...selected]}
             onDeleted={loadFiles}
           />
 
-          {identityId && (
+          {identityId && !isRoot && (
             <UploadButton
               prefix={`private/${identityId}/${currentPath}`}
             />
