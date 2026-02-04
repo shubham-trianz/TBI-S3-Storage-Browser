@@ -8,9 +8,11 @@ import {
   TextField,
   Stack,
 } from "@mui/material";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { uploadData } from "aws-amplify/storage";
 import { fetchAuthSession } from "aws-amplify/auth";
+import { FileUploader } from '@aws-amplify/ui-react-storage';
+
 
 type Props = {
   open: boolean;
@@ -29,10 +31,13 @@ export function UploadDialog({
   const [uploadedBy, setUploadedBy] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const [meta, setMeta] = useState({
-    evidenceNumber: "",
-    description: "",
-  });
+  // const [meta, setMeta] = useState({
+  //   evidenceNumber: "",
+  //   description: "",
+  // });
+  const evidenceNumberRef = useRef(null);
+  const evidenceDescriptionRef = useRef(null);
+
 
   /* 🔹 Load logged-in user */
   useEffect(() => {
@@ -51,38 +56,65 @@ export function UploadDialog({
     return /^\d{4}-\d{7}-E\d+$/.test(value);
   };
 
-  const handleUpload = async () => {
+  // const handleUpload = async () => {
+  //   if (!file) return;
+
+  //   if (!validateEvidenceNumber(meta.evidenceNumber)) {
+  //     setError(
+  //       "Evidence Number must be in format: YYYY-XXXXXXX-EXXXXX"
+  //     );
+  //     return;
+  //   }
+
+  //   try {
+  //     const fullPath = `${prefix}${file.name}`;
+
+  //     await uploadData({
+  //       path: fullPath,
+  //       data: file,
+  //       options: {
+  //         contentType: file.type,
+  //         metadata: {
+  //           evidenceNumber: meta.evidenceNumber,
+  //           description: meta.description,
+  //           uploadedBy,
+  //         },
+  //       },
+  //     }).result;
+
+  //     onUploaded?.();
+  //     onClose();
+  //   } catch (err) {
+  //     console.error("Upload failed", err);
+  //     setError("Upload failed");
+  //   }
+  // };
+
+  const processFile = ({ file }) => {
+
     if (!file) return;
 
-    if (!validateEvidenceNumber(meta.evidenceNumber)) {
+    const evidenceNumber = evidenceNumberRef.current?.value || '';
+    const description = evidenceDescriptionRef.current?.value || '';
+
+    console.log('evidenceNumber: ', evidenceNumber)
+    console.log('description: ', description)
+    if (!validateEvidenceNumber(evidenceNumber)) {
       setError(
         "Evidence Number must be in format: YYYY-XXXXXXX-EXXXXX"
       );
       return;
     }
-
-    try {
-      const fullPath = `${prefix}${file.name}`;
-
-      await uploadData({
-        path: fullPath,
-        data: file,
-        options: {
-          contentType: file.type,
-          metadata: {
-            evidenceNumber: meta.evidenceNumber,
-            description: meta.description,
-            uploadedBy,
-          },
-        },
-      }).result;
-
-      onUploaded?.();
-      onClose();
-    } catch (err) {
-      console.error("Upload failed", err);
-      setError("Upload failed");
-    }
+    const key = `${prefix}${file.name}`;
+    console.log('key: ', key)
+    return {
+      file,
+      key,
+      metadata: {
+        evidenceNumber: evidenceNumber,
+        description: description,
+      },
+    };
   };
 
   return (
@@ -91,7 +123,7 @@ export function UploadDialog({
 
       <DialogContent>
         <Stack spacing={2} mt={1}>
-          <Button variant="outlined" component="label">
+          {/* <Button variant="outlined" component="label">
             Browse file
             <input
               type="file"
@@ -100,22 +132,24 @@ export function UploadDialog({
                 setFile(e.target.files?.[0] || null)
               }
             />
-          </Button>
+          </Button> */}
+          
 
-          {file && <span>Selected: {file.name}</span>}
+          {/* {file && <span>Selected: {file.name}</span>} */}
 
           <TextField
             required
             label="Kaseware Evidence Number"
             placeholder="2025-1234567-E00001"
-            value={meta.evidenceNumber}
-            onChange={(e) =>
-              setMeta({ ...meta, evidenceNumber: e.target.value })
-            }
-            error={
-              !!meta.evidenceNumber &&
-              !validateEvidenceNumber(meta.evidenceNumber)
-            }
+            // value={meta.evidenceNumber}
+            // onChange={(e) =>
+            //   setMeta({ ...meta, evidenceNumber: e.target.value })
+            // }
+            inputRef={evidenceNumberRef}
+            // error={
+            //   !!meta.evidenceNumber &&
+            //   !validateEvidenceNumber(meta.evidenceNumber)
+            // }
             helperText="Format: YYYY-XXXXXXX-EXXXXX"
           />
 
@@ -123,16 +157,25 @@ export function UploadDialog({
             label="Description"
             multiline
             rows={2}
-            value={meta.description}
-            onChange={(e) =>
-              setMeta({ ...meta, description: e.target.value })
-            }
+            inputRef={evidenceDescriptionRef}
+            // value={meta.description}
+            // onChange={(e) =>
+            //   setMeta({ ...meta, description: e.target.value })
+            // }
           />
 
-          <TextField
+          {/* <TextField
             label="Uploaded By"
             value={uploadedBy}
             disabled
+          /> */}
+          <FileUploader
+            acceptedFileTypes={['image/*']}
+            path=''
+            maxFileCount={1}
+            isResumable
+            autoUpload={false}
+            processFile={processFile}
           />
 
           {error && (
@@ -143,13 +186,13 @@ export function UploadDialog({
 
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button
+        {/* <Button
           variant="contained"
           onClick={handleUpload}
           disabled={!file}
         >
           Upload
-        </Button>
+        </Button> */}
       </DialogActions>
     </Dialog>
   );
