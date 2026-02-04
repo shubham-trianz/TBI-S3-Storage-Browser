@@ -354,7 +354,7 @@ export const Personal = () => {
           {identityId && !isRoot && (
             <UploadButton
               prefix={`private/${identityId}/${currentPath}`}
-              onUploadComplete={loadFiles}
+              // onUploadComplete={loadFiles}
             />
           )}
         </Flex>
