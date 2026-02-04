@@ -1,46 +1,67 @@
-// import {
-//   createAmplifyAuthAdapter,
-//   createStorageBrowser,
-// } from '@aws-amplify/ui-react-storage/browser';
 import '@aws-amplify/ui-react-storage/styles.css';
 import './App.css';
 
 import config from '../amplify_outputs.json';
 import { Amplify } from 'aws-amplify';
 import { Authenticator, Button } from '@aws-amplify/ui-react';
+import { UserContext } from './context/UserContext';
+
+import logo from './assets/logo.png'; // 👈 ADD THIS
+import { MyStorageBrowser } from './components/MyStorageBrowser';
+
 Amplify.configure(config);
-import { UserContext } from './context/UserContext'; 
-
-// const { StorageBrowser } = createStorageBrowser({
-//   config: createAmplifyAuthAdapter(),
-// });
-
-import { MyStorageBrowser } from './components/MyStorageBrowser'
-
 
 function App() {
   return (
     <Authenticator>
       {({ signOut, user }) => {
-        const email = user?.signInDetails?.loginId || user?.username || '';
-        const displayName = email.split('@')[0] || 'User';
-        const user_name = user?.username
-        console.log('user: ', user)
+        const email =
+          user?.signInDetails?.loginId ||
+          user?.username ||
+          '';
+        const displayName =
+          email.split('@')[0] || 'User';
+        const user_name = user?.username;
+
         return (
-        <UserContext.Provider
-          value={{
+          <UserContext.Provider
+            value={{
               user_name,
-              email
+              email,
             }}
-        >
-          <div className="header">
-            <h1>{`Hello - ${displayName}`}</h1>
-            <Button onClick={signOut}>Sign out</Button>
-          </div>
-          {/* <StorageBrowser /> */}
-          <MyStorageBrowser/>
-        </UserContext.Provider>
-      )
+          >
+            {/* 🔹 LANDING PAGE HEADER */}
+            <div
+              className="header"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                }}
+              >
+                <img
+                  src={logo}
+                  alt="TBI Logo"
+                  height={100}
+                />
+                <h1 style={{ margin: 0 }}>
+                  {`Digital Evidence Management System`}
+                </h1>
+              </div>
+              <Button onClick={signOut}>Sign out</Button>
+            </div>
+            
+            <MyStorageBrowser />
+          </UserContext.Provider>
+        );
       }}
     </Authenticator>
   );
