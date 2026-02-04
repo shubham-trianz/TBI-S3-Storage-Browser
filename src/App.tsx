@@ -24,7 +24,7 @@ function App() {
       {({ signOut, user }) => {
         const email = user?.signInDetails?.loginId || user?.username || '';
         const displayName = email.split('@')[0] || 'User';
-        const user_name = user.username
+        const user_name = user?.username ?? '';
         console.log('user: ', user)
         return (
         <UserContext.Provider
