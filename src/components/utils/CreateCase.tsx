@@ -1,7 +1,7 @@
 import { uploadData } from "aws-amplify/storage";
 import { Button } from "@aws-amplify/ui-react";
-import { useState,useEffect } from "react";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { useState } from "react";
+// import { fetchAuthSession } from "aws-amplify/auth";
 import {
   Dialog,
   DialogTitle,
@@ -42,20 +42,20 @@ export const CreateCase = ({
   const [caseTitle, setCaseTitle] = useState("");
   const [jurisdiction, setJurisdiction] = useState<string[]>([]);
   const [caseAgents, setCaseAgents] = useState("");
-  const [uploadedBy, setUploadedBy] = useState("");
+  // const [uploadedBy, setUploadedBy] = useState("");
   // const [username, setUsername] = useState("");
   const { user_name } = useUser();
-  useEffect(() => {
-      async function loadUser() {
-        const session = await fetchAuthSession();
-        const username =
-          session.tokens?.idToken?.payload?.email ??
-          session.tokens?.idToken?.payload?.["cognito:username"] ??
-          "";
-        setUploadedBy(String(username));
-      }
-      loadUser();
-    }, []);
+  // useEffect(() => {
+  //     async function loadUser() {
+  //       const session = await fetchAuthSession();
+  //       const username =
+  //         session.tokens?.idToken?.payload?.email ??
+  //         session.tokens?.idToken?.payload?.["cognito:username"] ??
+  //         "";
+  //       setUploadedBy(String(username));
+  //     }
+  //     loadUser();
+  //   }, []);
   const validateCaseNumber = (value: string) =>
     /^\d{4}-\d{7}$/.test(value);
 
