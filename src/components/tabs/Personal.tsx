@@ -21,13 +21,23 @@ export const Personal = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [cases, setCases] = useState([]);
   // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
-  
   const currentPath = pathStack.join('');
+  const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const isRoot = pathStack.length === 0;
-
+  const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
+  const selectedFolders = [...selected].filter(p => p.endsWith("/"));
   const selectAllRef = useRef<HTMLInputElement>(null);
   const selectedFilePath =
     selected.size === 1 ? [...selected][0] : null;
+  const rootFolderPrefix = identityId
+  ? `private/${identityId}/`
+  : null;
+  const canGenerateLink =
+    selectedFiles.length > 0 ||
+    selectedFolders.length === 1 ||
+    !!currentFolderPrefix ||
+    !!rootFolderPrefix;  
 
   const isSingleFileSelected =
     !!selectedFilePath && !selectedFilePath.endsWith("/");
@@ -201,15 +211,46 @@ export const Personal = () => {
           <Button
             size="small"
             variation="primary"
-            disabled={!isSingleFileSelected}
-            onClick={() => {
-              if (selectedFilePath) {
-                generateAndCopyLink(selectedFilePath);
+            isLoading={isGeneratingLink}
+            loadingText="Generating link..."
+            disabled={isGeneratingLink || !canGenerateLink}
+            onClick={async () => {
+              try {
+                setIsGeneratingLink(true);
+
+                // CASE 1: One or more files selected → ZIP only those files
+                if (selectedFiles.length > 0) {
+                  await generateAndCopyLink({
+                    objectKeys: selectedFiles,
+                  });
+                  return;
+                }
+
+                // CASE 2: Folder selected → ZIP that folder
+                if (selectedFolders.length === 1) {
+                  await generateAndCopyLink({
+                    folderPrefix: selectedFolders[0],
+                  });
+                  return;
+                }
+
+                // CASE 3: Inside folder, nothing selected → ZIP current folder
+                if (!isRoot && currentFolderPrefix) {
+                  await generateAndCopyLink({
+                    folderPrefix: currentFolderPrefix,
+                  });
+                }
+              } catch (err) {
+                console.error(err);
+              } finally {
+                setIsGeneratingLink(false);
               }
             }}
           >
             Generate link
           </Button>
+
+
 
           {isRoot ? (
             <CreateCase
