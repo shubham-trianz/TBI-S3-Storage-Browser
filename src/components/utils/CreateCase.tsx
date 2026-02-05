@@ -46,7 +46,7 @@ export const CreateCase = ({
   const [caseTitle, setCaseTitle] = useState("");
   const [jurisdiction, setJurisdiction] = useState<string[]>([]);
   const [caseAgents, setCaseAgents] = useState("");
-  const { user_name } = useUser();
+  const { user_name,email } = useUser();
 
   const validateCaseNumber = (value: string) =>
     /^\d{4}-\d{7}$/.test(value);
@@ -103,6 +103,7 @@ export const CreateCase = ({
         options: {
           metadata: {
             user_name: user_name,
+            user_email: email || '',
             case_number: caseNumber,
             case_title: caseTitle,
             jurisdiction: JSON.stringify(jurisdiction),
