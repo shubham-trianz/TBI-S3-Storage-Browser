@@ -28,8 +28,8 @@ export const Personal = () => {
   const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
   const selectedFolders = [...selected].filter(p => p.endsWith("/"));
   const selectAllRef = useRef<HTMLInputElement>(null);
-  const selectedFilePath =
-    selected.size === 1 ? [...selected][0] : null;
+  // const selectedFilePath =
+  //   selected.size === 1 ? [...selected][0] : null;
   const rootFolderPrefix = identityId
   ? `private/${identityId}/`
   : null;

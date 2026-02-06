@@ -8,8 +8,8 @@ import {
   TextField,
   Stack,
 } from "@mui/material";
-import { useState, useEffect, useRef } from "react";
-import { fetchAuthSession } from "aws-amplify/auth";
+import { useState, useRef } from "react";
+// import { fetchAuthSession } from "aws-amplify/auth";
 import { FileUploader } from '@aws-amplify/ui-react-storage';
 import { useUser } from "../../context/UserContext";
 
@@ -34,8 +34,8 @@ export function UploadDialog({
   //   evidenceNumber: "",
   //   description: "",
   // });
-  const evidenceNumberRef = useRef(null);
-  const evidenceDescriptionRef = useRef(null);
+  const evidenceNumberRef = useRef<HTMLInputElement | null>(null);
+  const evidenceDescriptionRef = useRef<HTMLInputElement | null>(null);
 
 
   /* 🔹 Load logged-in user */
@@ -104,7 +104,7 @@ export function UploadDialog({
       setError(
         "Evidence Number must be in format: YYYY-XXXXXXX-EXXXXX"
       );
-      return;
+      throw new Error("Invalid evidence number");
     }
     const key = `${prefix}${file.name}`;
     console.log('key: ', key)
