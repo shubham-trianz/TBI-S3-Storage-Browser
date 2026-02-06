@@ -11,6 +11,9 @@ import { UploadButton } from "../utils/UploadButton";
 import { DeleteObjects } from "../utils/DeleteObjects";
 import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
+// import { downloadData } from 'aws-amplify/storage';
+// import { getUrl } from 'aws-amplify/storage';
+
 
 export const Personal = () => {
   const [files, setFiles] = useState<any[]>([]);
@@ -38,6 +41,28 @@ export const Personal = () => {
   //   }
   //   return files.some(f => f.path.toLowerCase() === `${currentPath}${folderName}/`.toLowerCase());
   // };
+  const createCase = useCallback(async (payload: any) => {
+  const session = await fetchAuthSession();
+  const token = session.tokens?.idToken?.toString();
+
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+  const res = await fetch(`${apiBaseUrl}/cases`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Request failed: ${res.status}`);
+  }
+
+  return await res.json();
+}, []);
+
 
   const loadCases = useCallback(async () => {
     try {
@@ -49,10 +74,12 @@ export const Personal = () => {
       const res = await fetch(
         `${apiBaseUrl}/cases`,
         {
+          method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json"
-          }
+          },
+          // body: JSON.stringify(caseData)
         },
       );
       if (!res.ok) {
@@ -185,6 +212,8 @@ export const Personal = () => {
         <th>Case Title</th>
         <th>Case Agent</th>
         <th>Jurisdiction</th>
+        <th>Size</th>
+
       </tr>
     </thead>
   );
@@ -233,6 +262,7 @@ export const Personal = () => {
         <td>{item.case_title}</td>
         <td>{item.case_agents}</td>
         <td>{item.jurisdiction}</td>
+        <td>{formatBytes(item.size)}</td>
       </tr>
     );
   };
@@ -324,13 +354,12 @@ export const Personal = () => {
           {isRoot ? (
             <CreateCase
               basePath={`private/${identityId}/${currentPath}`}
-              onCreated={() => {
-                loadCases();
+              onCreated={async (payload: any) => {
+                const created = await createCase(payload);
+                const createdCase = JSON.parse(created['item'])
+                setCases((prev) => [...prev, createdCase])
               }}
               disabled={loading || !identityId}
-              // onDuplicateError={showNotification}
-              // folderExists={folderExists}
-              // refreshCases={loadCases}
             />
             )
             :(

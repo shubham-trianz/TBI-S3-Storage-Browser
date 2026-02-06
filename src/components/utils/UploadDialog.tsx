@@ -9,10 +9,9 @@ import {
   Stack,
 } from "@mui/material";
 import { useState, useEffect, useRef } from "react";
-import { uploadData } from "aws-amplify/storage";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { FileUploader } from '@aws-amplify/ui-react-storage';
-
+import { useUser } from "../../context/UserContext";
 
 type Props = {
   open: boolean;
@@ -30,6 +29,7 @@ export function UploadDialog({
   const [file, setFile] = useState<File | null>(null);
   const [uploadedBy, setUploadedBy] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { user_name } = useUser();
 
   // const [meta, setMeta] = useState({
   //   evidenceNumber: "",
@@ -113,6 +113,8 @@ export function UploadDialog({
       metadata: {
         evidenceNumber: evidenceNumber,
         description: description,
+        user_name: user_name,
+        case_number: key.split('/')[2]
       },
     };
   };

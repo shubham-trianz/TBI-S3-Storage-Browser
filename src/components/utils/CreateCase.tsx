@@ -16,7 +16,7 @@ import {
 import { useUser } from "../../context/UserContext";
 type CreateFolderProps = {
   basePath: string;
-  onCreated: () => void;
+  onCreated: (payload: any) => void;
   disabled?: boolean;
 };
 
@@ -44,7 +44,7 @@ export const CreateCase = ({
   const [caseAgents, setCaseAgents] = useState("");
   // const [uploadedBy, setUploadedBy] = useState("");
   // const [username, setUsername] = useState("");
-  const { user_name } = useUser();
+  const { user_name, email } = useUser();
   // useEffect(() => {
   //     async function loadUser() {
   //       const session = await fetchAuthSession();
@@ -88,6 +88,7 @@ export const CreateCase = ({
         options: {
           metadata: {
             user_name: user_name,
+            email: email || '',
             case_number: caseNumber,
             case_title: caseTitle,
             jurisdiction: JSON.stringify(jurisdiction),
@@ -95,9 +96,18 @@ export const CreateCase = ({
           },
         },
       }).result;
+      const payload = {
+        user_name: user_name,
+        email: email || '',
+        case_number: caseNumber,
+        case_title: caseTitle,
+        jurisdiction: JSON.stringify(jurisdiction),
+        case_agents: caseAgents,
+        source_key: folderPath
+      }
 
       setOpen(false);
-      onCreated();
+      onCreated(payload);
     } catch (err) {
       console.error("Create case failed", err);
       setError("Failed to create Case Evidence Repository");
