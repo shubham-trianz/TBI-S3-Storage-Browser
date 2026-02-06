@@ -11,9 +11,7 @@ import { UploadButton } from "../utils/UploadButton";
 import { DeleteObjects } from "../utils/DeleteObjects";
 import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
-// import { downloadData } from 'aws-amplify/storage';
-// import { getUrl } from 'aws-amplify/storage';
-
+import { generateAndCopyLink } from "../utils/generateLink";
 
 export const Personal = () => {
   const [files, setFiles] = useState<any[]>([]);
@@ -23,11 +21,23 @@ export const Personal = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [cases, setCases] = useState([]);
   // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
-  
   const currentPath = pathStack.join('');
+  const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const isRoot = pathStack.length === 0;
-
+  const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
+  const selectedFolders = [...selected].filter(p => p.endsWith("/"));
   const selectAllRef = useRef<HTMLInputElement>(null);
+  const selectedFilePath =
+    selected.size === 1 ? [...selected][0] : null;
+  const rootFolderPrefix = identityId
+  ? `private/${identityId}/`
+  : null;
+  const canGenerateLink =
+    selectedFiles.length > 0 ||
+    selectedFolders.length === 1 ||
+    !!currentFolderPrefix ||
+    !!rootFolderPrefix;  
 
   // const showNotification = (message: string, type: 'error' | 'success' = 'error', duration = 4000) => {
   //   setNotification({ message, type });
@@ -63,6 +73,8 @@ export const Personal = () => {
   return await res.json();
 }, []);
 
+  const isSingleFileSelected =
+    !!selectedFilePath && !selectedFilePath.endsWith("/");
 
   const loadCases = useCallback(async () => {
     try {
@@ -109,7 +121,6 @@ export const Personal = () => {
     init();
   }, []);
 
-  /* ...existing code... */
   function getFirstLevelItems(
     items: any[],
     basePath: string
@@ -138,8 +149,6 @@ export const Personal = () => {
 
     return Array.from(map.values());
   }
-
-  /* ...existing code... */
   const loadFiles = useCallback(async () => {
     if (!identityId) return;
 
@@ -163,8 +172,6 @@ export const Personal = () => {
   useEffect(() => {
     loadFiles();
   }, [loadFiles]);
-
-  /* ...existing code... */
   const toggleSelect = (path: string) => {
     setSelected(prev => {
       const next = new Set(prev);
@@ -181,7 +188,6 @@ export const Personal = () => {
     }
   };
 
-  /* ...existing code... */
   useEffect(() => {
     if (!selectAllRef.current) return;
 
@@ -189,7 +195,6 @@ export const Personal = () => {
       selected.size > 0 && selected.size < files.length;
   }, [selected, files]);
 
-  /* ...existing code... */
   function formatBytes(bytes?: number) {
     if (!bytes) return '—';
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -304,43 +309,35 @@ export const Personal = () => {
   /* ...existing code... */
   return (
     <>
-      {/* {notification && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '20px',
-            right: '20px',
-            backgroundColor: notification.type === 'error' ? '#f44336' : '#4caf50',
-            color: 'white',
-            padding: '12px 16px',
-            borderRadius: '4px',
-            zIndex: 1000,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-            animation: 'slideIn 0.3s ease-in-out',
-          }}
-        >
-          {notification.message}
-        </div>
-      )} */}
-
-      {/* <style>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-      `}</style> */}
-
       <Flex
         justifyContent="space-between"
         alignItems="center"
         padding="0.75rem 0"
       >
+        {/* Add this right after your opening Flex */}
+        {!isRoot && (
+          <Flex gap="0.5rem" alignItems="center" padding="0.5rem 0">
+            <Button
+              size="small"
+              variation="link"
+              onClick={() => setPathStack([])}
+            >
+              Home
+            </Button>
+            {pathStack.map((segment, idx) => (
+              <Flex key={idx} gap="0.5rem" alignItems="center">
+                <span>/</span>
+                <Button
+                  size="small"
+                  variation="link"
+                  onClick={() => setPathStack(pathStack.slice(0, idx + 1))}
+                >
+                  {segment.replace('/', '')}
+                </Button>
+              </Flex>
+            ))}
+          </Flex>
+        )}
         <Heading level={5}>Files</Heading>
 
         <Flex gap="0.5rem">
@@ -351,6 +348,51 @@ export const Personal = () => {
           >
             Refresh
           </Button>
+
+          <Button
+            size="small"
+            variation="primary"
+            isLoading={isGeneratingLink}
+            loadingText="Generating link..."
+            disabled={isGeneratingLink || !canGenerateLink}
+            onClick={async () => {
+              try {
+                setIsGeneratingLink(true);
+
+                // CASE 1: One or more files selected → ZIP only those files
+                if (selectedFiles.length > 0) {
+                  await generateAndCopyLink({
+                    objectKeys: selectedFiles,
+                  });
+                  return;
+                }
+
+                // CASE 2: Folder selected → ZIP that folder
+                if (selectedFolders.length === 1) {
+                  await generateAndCopyLink({
+                    folderPrefix: selectedFolders[0],
+                  });
+                  return;
+                }
+
+                // CASE 3: Inside folder, nothing selected → ZIP current folder
+                if (!isRoot && currentFolderPrefix) {
+                  await generateAndCopyLink({
+                    folderPrefix: currentFolderPrefix,
+                  });
+                }
+              } catch (err) {
+                console.error(err);
+              } finally {
+                setIsGeneratingLink(false);
+              }
+            }}
+          >
+            Generate link
+          </Button>
+
+
+
           {isRoot ? (
             <CreateCase
               basePath={`private/${identityId}/${currentPath}`}
@@ -361,20 +403,16 @@ export const Personal = () => {
               }}
               disabled={loading || !identityId}
             />
-            )
-            :(
-              <CreateFolder
+          ) : (
+            <CreateFolder
               basePath={`private/${identityId}/${currentPath}`}
               onCreated={() => {
                 loadFiles();
               }}
               disabled={loading || !identityId}
-              // onDuplicateError={showNotification}
-              // folderExists={folderExists}
-              // refreshFiles={loadFiles}
             />
-            )
-        }
+          )}
+
           <DeleteObjects
             selectedPaths={[...selected]}
             onDeleted={loadFiles}
@@ -383,7 +421,6 @@ export const Personal = () => {
           {identityId && !isRoot && (
             <UploadButton
               prefix={`private/${identityId}/${currentPath}`}
-              // onUploadComplete={loadFiles}
             />
           )}
         </Flex>
@@ -391,59 +428,70 @@ export const Personal = () => {
 
       <Divider />
 
-      <div className="breadcrumb">
-        <span
-          className="breadcrumb-link"
-          onClick={() => setPathStack([])}
-        >
-          Root
-        </span>
-
-        {pathStack.map((segment, index) => {
-          const name = segment.replace('/', '');
-          const isLast = index === pathStack.length - 1;
-
-          return (
-            <span key={index}>
-              {' / '}
-              <span
-                className={!isLast ? 'breadcrumb-link' : ''}
-                style={isLast ? { color: '#555' } : undefined}
-                onClick={
-                  !isLast
-                    ? () => setPathStack(pathStack.slice(0, index + 1))
-                    : undefined
-                }
-              >
-                {name}
-              </span>
-            </span>
-          );
-        })}
-      </div>
-
       <table className="storage-table">
-        {isRoot ? (
-          <CasesTableHeader />
-        ) : (
-          <FilesTableHeader />
-        )}
+        <thead>
+          <tr>
+            <th>
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                checked={files.length > 0 && selected.size === files.length}
+                onChange={toggleSelectAll}
+              />
+            </th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Size</th>
+            <th>Last Modified</th>
+          </tr>
+        </thead>
 
         <tbody>
           {loading && (
-            <tr className="loading-row">
+            <tr>
               <td colSpan={5}>Loading…</td>
             </tr>
           )}
 
           {!loading && files.length === 0 && (
-            <tr className="loading-row">
+            <tr>
               <td colSpan={5}>Empty folder</td>
             </tr>
           )}
 
-          {!loading && isRoot && cases.map(renderCaseRow)}
-          {!loading && !isRoot && files.map(renderFileRow)}
+          {!loading && files.map(item => {
+            const name = item.path.split('/').filter(Boolean).pop();
+            const isFolder = item.path.endsWith('/');
+
+            return (
+              <tr
+                key={item.path}
+                className={isFolder ? 'folder' : ''}
+                style={{ cursor: isFolder ? 'pointer' : 'default' }}
+                onClick={() =>
+                  isFolder &&
+                  setPathStack(prev => [...prev, `${name}/`])
+                }
+              >
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(item.path)}
+                    onClick={e => e.stopPropagation()}
+                    onChange={() => toggleSelect(item.path)}
+                  />
+                </td>
+                <td>{isFolder ? '📁' : '📄'} {name}</td>
+                <td>{isFolder ? 'Folder' : 'File'}</td>
+                <td>{isFolder ? '—' : formatBytes(item.size)}</td>
+                <td>
+                  {item.lastModified
+                    ? item.lastModified.toLocaleString()
+                    : '—'}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </>

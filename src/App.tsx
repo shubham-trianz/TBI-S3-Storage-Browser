@@ -5,7 +5,7 @@ import config from '../amplify_outputs.json';
 import { Amplify } from 'aws-amplify';
 import { Authenticator, Button } from '@aws-amplify/ui-react';
 import { UserContext } from './context/UserContext';
-
+import { Toaster } from "react-hot-toast";
 import logo from './assets/logo.png'; // 
 import { MyStorageBrowser } from './components/MyStorageBrowser';
 
@@ -16,7 +16,7 @@ function App() {
     <Authenticator>
       {({ signOut, user }) => {
         const email = user?.signInDetails?.loginId || user?.username || '';
-        // const displayName = email.split('@')[0] || 'User';
+        const displayName = email.split('@')[0] || 'User';
         const user_name = user?.username ?? '';
         console.log('user: ', user)
         return (
@@ -52,9 +52,18 @@ function App() {
                   {`Digital Evidence Management System`}
                 </h1>
               </div>
+              <span
+              style={{
+                fontSize: '0.9rem',
+                color: '#444',
+                fontWeight: 500,
+              }}
+            >
+              {displayName}
+            </span>
               <Button onClick={signOut}>Sign out</Button>
             </div>
-            
+            <Toaster position="bottom-right" reverseOrder={false} />
             <MyStorageBrowser />
           </UserContext.Provider>
         );
