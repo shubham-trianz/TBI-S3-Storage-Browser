@@ -1,7 +1,6 @@
 import { uploadData } from "aws-amplify/storage";
 import { Button } from "@aws-amplify/ui-react";
 import { useState } from "react";
-// import { fetchAuthSession } from "aws-amplify/auth";
 import {
   Dialog,
   DialogTitle,
@@ -14,10 +13,14 @@ import {
   Chip,
 } from "@mui/material";
 import { useUser } from "../../context/UserContext";
-type CreateFolderProps = {
+
+type CreateCaseProps = {
   basePath: string;
-  onCreated: () => void;
+  onCreated: (payload: any) => void;
   disabled?: boolean;
+  onDuplicateError?: (message: string, type: 'error' | 'success') => void;
+  folderExists?: (folderName: string) => boolean;
+  refreshCases?: () => Promise<any>;
 };
 
 const JURISDICTIONS = [
@@ -27,13 +30,14 @@ const JURISDICTIONS = [
   "West US Attorneys Office",
 ];
 
-
-
 export const CreateCase = ({
   basePath,
   onCreated,
   disabled,
-}: CreateFolderProps) => {
+  onDuplicateError,
+  folderExists,
+  refreshCases,
+}: CreateCaseProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,22 +46,19 @@ export const CreateCase = ({
   const [caseTitle, setCaseTitle] = useState("");
   const [jurisdiction, setJurisdiction] = useState<string[]>([]);
   const [caseAgents, setCaseAgents] = useState("");
-  // const [uploadedBy, setUploadedBy] = useState("");
-  // const [username, setUsername] = useState("");
-  const { user_name } = useUser();
-  // useEffect(() => {
-  //     async function loadUser() {
-  //       const session = await fetchAuthSession();
-  //       const username =
-  //         session.tokens?.idToken?.payload?.email ??
-  //         session.tokens?.idToken?.payload?.["cognito:username"] ??
-  //         "";
-  //       setUploadedBy(String(username));
-  //     }
-  //     loadUser();
-  //   }, []);
+  const { user_name,email } = useUser();
+
   const validateCaseNumber = (value: string) =>
     /^\d{4}-\d{7}$/.test(value);
+
+  const handleOpen = () => {
+    setCaseNumber("");
+    setCaseTitle("");
+    setJurisdiction([]);
+    setCaseAgents("");
+    setError(null);
+    setOpen(true);
+  };
 
   const handleCreate = async () => {
     setError(null);
@@ -77,17 +78,32 @@ export const CreateCase = ({
       return;
     }
 
-    const folderPath = `${basePath}${caseNumber}/`;
-
     try {
       setLoading(true);
 
+      // Refresh cases from DB BEFORE checking for duplicates
+      if (refreshCases) {
+        await refreshCases();
+      }
+
+      // Now check if case already exists with fresh data
+      if (folderExists && folderExists(caseNumber)) {
+        const message = `"${caseNumber}" already exists. Try with another name?`;
+        setError(message);
+        onDuplicateError?.(message, 'error');
+        setLoading(false);
+        return;
+      }
+
+      const folderPath = `${basePath}${caseNumber}/`;
+
       await uploadData({
         path: `${folderPath}${caseNumber}_metadata.json`,
-        data: JSON.stringify({created: true}),
+        data: JSON.stringify({ created: true }),
         options: {
           metadata: {
             user_name: user_name,
+            user_email: email || '',
             case_number: caseNumber,
             case_title: caseTitle,
             jurisdiction: JSON.stringify(jurisdiction),
@@ -95,9 +111,19 @@ export const CreateCase = ({
           },
         },
       }).result;
+      const payload = {
+        user_name: user_name,
+        email: email || '',
+        case_number: caseNumber,
+        case_title: caseTitle,
+        jurisdiction: JSON.stringify(jurisdiction),
+        case_agents: caseAgents,
+        source_key: folderPath
+      }
 
+      onDuplicateError?.(`"${caseNumber}" created successfully`, 'success');
       setOpen(false);
-      onCreated();
+      onCreated(payload);
     } catch (err) {
       console.error("Create case failed", err);
       setError("Failed to create Case Evidence Repository");
@@ -110,7 +136,7 @@ export const CreateCase = ({
     <>
       <Button
         size="small"
-        onClick={() => setOpen(true)}
+        onClick={handleOpen}
         isDisabled={disabled}
       >
         Create Case
@@ -127,6 +153,7 @@ export const CreateCase = ({
               placeholder="2025-1234567"
               value={caseNumber}
               onChange={(e) => setCaseNumber(e.target.value)}
+              disabled={loading}
             />
 
             <TextField
@@ -134,12 +161,14 @@ export const CreateCase = ({
               label="Kaseware Case Title"
               value={caseTitle}
               onChange={(e) => setCaseTitle(e.target.value)}
+              disabled={loading}
             />
 
-          <TextField
+            <TextField
               select
               required
               label="Jurisdiction"
+              disabled={loading}
               SelectProps={{
                 multiple: true,
                 renderValue: (selected) => (
@@ -178,6 +207,7 @@ export const CreateCase = ({
               placeholder="Agent Smith, Agent Doe"
               value={caseAgents}
               onChange={(e) => setCaseAgents(e.target.value)}
+              disabled={loading}
             />
 
             {error && (
@@ -187,7 +217,7 @@ export const CreateCase = ({
         </DialogContent>
 
         <DialogActions>
-          <Button variation="link" onClick={() => setOpen(false)}>
+          <Button variation="link" onClick={() => setOpen(false)} disabled={loading}>
             Cancel
           </Button>
           <Button

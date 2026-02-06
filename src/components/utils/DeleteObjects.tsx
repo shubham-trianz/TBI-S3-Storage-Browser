@@ -8,6 +8,8 @@ import {
   DialogActions,
   Typography,
 } from "@mui/material";
+import { fetchAuthSession } from "aws-amplify/auth";
+import { useUser } from "../../context/UserContext";
 
 type DeleteObjectsProps = {
   selectedPaths: string[];
@@ -24,6 +26,36 @@ export const DeleteObjects = ({
   const [errorOpen, setErrorOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const { user_name } = useUser();
+  
+
+  const deleteCase = async (selectedPaths: any) => {
+    const session = await fetchAuthSession();
+    const token = session.tokens?.idToken?.toString();
+    console.log('payloadddd: ', selectedPaths)
+    
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+    
+    const payload = {
+      user_name: user_name,
+      selectedPaths: selectedPaths
+    }
+    const res = await fetch(`${apiBaseUrl}/cases`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+  
+    if (!res.ok) {
+      throw new Error(`Request failed: ${res.status}`);
+    }
+  
+    return await res.json();
+  }
+
   useEffect(() => {
     if (!errorOpen) return;
 
@@ -39,10 +71,11 @@ export const DeleteObjects = ({
     if (selectedPaths.length === 0) return;
 
     try {
-      
+      console.log('selectedPaths: ', selectedPaths)
       for (const path of selectedPaths) {
         if (path.endsWith("/")) {
           const result = await list({ path });
+          console.log('result for deletion: ', result)
 
           // Ignore the folder marker itself
           const hasFiles = result.items.some(
@@ -68,7 +101,27 @@ export const DeleteObjects = ({
   };
 
   const performDelete = async () => {
+    console.log('performing delete')
     setConfirmOpen(false);
+
+    let flag = 0;
+    for(const path of selectedPaths){
+      console.log('path: ', path)
+      const parts = path.split('/').filter(Boolean);
+      if (parts.length === 3 && /^\d{4}-\d{7}$/.test(parts[2])) {
+        console.log('true')
+        // deleteCase(parts[2]);
+      }else{
+        flag = 1
+        break;
+      }
+    }
+
+    if(!flag){
+      deleteCase(selectedPaths);
+    }
+
+    // deleteCase(selectedPaths)
 
     try {
       await Promise.all(
