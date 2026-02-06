@@ -373,7 +373,7 @@ useEffect(() => {
         <td>📁 {name}</td>
         <td>{item.case_title}</td>
         <td>{item.case_agents}</td>
-        <td>{item.jurisdiction}</td>
+        <td>{JSON.parse(item.jurisdiction).join(', ')}</td>
         <td>{formatBytes(item.size)}</td>
       </tr>
     );
@@ -757,6 +757,7 @@ useEffect(() => {
               onCreated={async (payload: any) => {
                 const created = await createCase(payload);
                 const createdCase = JSON.parse(created['item'])
+                createdCase.size = 16
                 setCases((prev) => [...prev, createdCase])
               }}
               disabled={loading || !identityId}
@@ -796,7 +797,7 @@ useEffect(() => {
           className="breadcrumb-link"
           onClick={() => setPathStack([])}
         >
-          Root
+          Home
         </span>
 
         {pathStack.map((segment, index) => {

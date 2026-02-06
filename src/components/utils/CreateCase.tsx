@@ -24,11 +24,14 @@ type CreateCaseProps = {
 };
 
 const JURISDICTIONS = [
-  ...Array.from({ length: 32 }, (_, i) => `${i + 1}st Judicial District`.replace("1st", i + 1 === 1 ? "1st" : `${i + 1}th`)),
-  "East US Attorneys Office",
-  "Middle US Attorneys Office",
-  "West US Attorneys Office",
-];
+  "1st Jurisdiction",
+  "2nd Jurisdiction",
+  "3rd Jurisdiction",
+  "4th Jurisdiction",
+  "5th Jurisdiction",
+  "6th Jurisdiction",
+  "7th Jurisdiction",
+  ];
 
 export const CreateCase = ({
   basePath,
