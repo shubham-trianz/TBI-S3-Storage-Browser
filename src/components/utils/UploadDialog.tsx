@@ -24,10 +24,9 @@ export function UploadDialog({
   open,
   onClose,
   prefix,
-  onUploaded,
 }: Props) {
-  const [file, setFile] = useState<File | null>(null);
-  const [uploadedBy, setUploadedBy] = useState("");
+  // const [file, setFile] = useState<File | null>(null);
+  // const [uploadedBy, setUploadedBy] = useState("");
   const [error, setError] = useState<string | null>(null);
   const { user_name } = useUser();
 
@@ -40,17 +39,17 @@ export function UploadDialog({
 
 
   /* 🔹 Load logged-in user */
-  useEffect(() => {
-    async function loadUser() {
-      const session = await fetchAuthSession();
-      const username =
-        session.tokens?.idToken?.payload?.email ??
-        session.tokens?.idToken?.payload?.["cognito:username"] ??
-        "";
-      setUploadedBy(String(username));
-    }
-    loadUser();
-  }, []);
+  // useEffect(() => {
+  //   async function loadUser() {
+  //     const session = await fetchAuthSession();
+  //     const username =
+  //       session.tokens?.idToken?.payload?.email ??
+  //       session.tokens?.idToken?.payload?.["cognito:username"] ??
+  //       "";
+  //     setUploadedBy(String(username));
+  //   }
+  //   loadUser();
+  // }, []);
 
   const validateEvidenceNumber = (value: string) => {
     return /^\d{4}-\d{7}-E\d+$/.test(value);
@@ -125,19 +124,9 @@ export function UploadDialog({
 
       <DialogContent>
         <Stack spacing={2} mt={1}>
-          {/* <Button variant="outlined" component="label">
-            Browse file
-            <input
-              type="file"
-              hidden
-              onChange={(e) =>
-                setFile(e.target.files?.[0] || null)
-              }
-            />
-          </Button> */}
+          
           
 
-          {/* {file && <span>Selected: {file.name}</span>} */}
 
           <TextField
             required
@@ -166,11 +155,7 @@ export function UploadDialog({
             // }
           />
 
-          {/* <TextField
-            label="Uploaded By"
-            value={uploadedBy}
-            disabled
-          /> */}
+          
           <FileUploader
             acceptedFileTypes={['image/*']}
             path=''
@@ -188,13 +173,7 @@ export function UploadDialog({
 
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        {/* <Button
-          variant="contained"
-          onClick={handleUpload}
-          disabled={!file}
-        >
-          Upload
-        </Button> */}
+       
       </DialogActions>
     </Dialog>
   );
