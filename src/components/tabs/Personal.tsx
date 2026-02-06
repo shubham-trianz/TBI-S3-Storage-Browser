@@ -13,13 +13,23 @@ import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
 import { generateAndCopyLink } from "../utils/generateLink";
 
+type CaseItem = {
+  case_number: string;
+  case_title: string;
+  jurisdiction: string;
+  case_agents: string;
+  email: string;
+  user_name: string;
+  size?: number;
+};
+
 export const Personal = () => {
   const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [cases, setCases] = useState([]);
+  const [cases, setCases] = useState<CaseItem[]>([]);
   // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const currentPath = pathStack.join('');
   const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
