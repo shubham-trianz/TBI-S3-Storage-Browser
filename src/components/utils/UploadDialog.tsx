@@ -89,9 +89,11 @@ export function UploadDialog({
   //   }
   // };
 
-  const processFile = ({ file }) => {
+  const processFile = ({ file }: { file: File }) => {
 
-    if (!file) return;
+    if (!file) {
+    throw new Error("No file provided");
+  }
 
     const evidenceNumber = evidenceNumberRef.current?.value || '';
     const description = evidenceDescriptionRef.current?.value || '';
