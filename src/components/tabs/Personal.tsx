@@ -1,5 +1,5 @@
 import { list } from 'aws-amplify/storage';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import {
   Flex,
@@ -38,6 +38,86 @@ export const Personal = () => {
   const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
   const selectedFolders = [...selected].filter(p => p.endsWith("/"));
   const selectAllRef = useRef<HTMLInputElement>(null);
+  const [searchField, setSearchField] = useState<SearchField>('case_number');
+  const [searchValue, setSearchValue] = useState('');
+
+
+  type SearchField = 'case_number' | 'case_title' | 'case_agents';
+
+  const SEARCH_FIELDS: { key: SearchField; label: string }[] = [
+    { key: 'case_number', label: 'Case Number' },
+    { key: 'case_title', label: 'Case Title' },
+    { key: 'case_agents', label: 'Case Agent' }
+  ];
+
+  type SortKey = 'case_number' | 'case_title' | 'case_agents' | 'size';
+  type SortOrder = 'asc' | 'desc';
+
+  const [sortKey, setSortKey] = useState<SortKey>('case_number');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
+  // const filteredCases = useMemo(() => {
+  //   if (!searchTerm.trim()) return cases;
+
+  //   const q = searchTerm.toLowerCase();
+
+  //   return cases.filter(item =>
+  //     item.case_number.toLowerCase().includes(q) ||
+  //     item.case_title.toLowerCase().includes(q) ||
+  //     item.case_agents.toLowerCase().includes(q)
+  //   );
+  // }, [cases, searchTerm]);
+
+  const filteredCases = useMemo(() => {
+    if (!searchValue.trim()) return cases;
+
+    const q = searchValue.toLowerCase();
+
+    return cases.filter(item =>
+      String(item[searchField] ?? '')
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [cases, searchField, searchValue]);
+
+
+  const sortedCases = useMemo(() => {
+  const sorted = [...filteredCases].sort((a, b) => {
+    // const aVal = a[sortKey];
+    // const bVal = b[sortKey];
+
+    // numeric sort (size)
+    if (sortKey === 'size') {
+      const aSize = typeof a.size === 'number' ? a.size : 0;
+      const bSize = typeof b.size === 'number' ? b.size : 0;
+      return aSize - bSize;
+    }
+
+    const aVal = String(a[sortKey] ?? '');
+    const bVal = String(b[sortKey] ?? '');
+
+    // string sort
+    return String(aVal ?? '').localeCompare(String(bVal ?? ''), undefined, {
+      sensitivity: 'base',
+      numeric: true
+    });
+  });
+
+  return sortOrder === 'asc' ? sorted : sorted.reverse();
+}, [filteredCases, sortKey, sortOrder]);
+
+const handleSort = (key: SortKey) => {
+  if (sortKey === key) {
+    setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+  } else {
+    setSortKey(key);
+    setSortOrder('asc');
+  }
+};
+
+useEffect(() => {
+  setSearchValue('');
+}, [searchField]);
   // const selectedFilePath =
   //   selected.size === 1 ? [...selected][0] : null;
   const rootFolderPrefix = identityId
@@ -212,6 +292,9 @@ export const Personal = () => {
     return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
   }
 
+  const SortIcon = ({ active }: { active: boolean }) =>
+  active ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : null;
+
   const CasesTableHeader = () => (
     <thead>
       <tr>
@@ -223,15 +306,28 @@ export const Personal = () => {
             onChange={toggleSelectAll}
           />
         </th>
-        <th>Case Number</th>
-        <th>Case Title</th>
-        <th>Case Agent</th>
+        {/* <th>Case Number</th> */}
+        <th onClick={() => handleSort('case_number')} style={{ cursor: 'pointer' }}>
+          Case Number <SortIcon active={sortKey === 'case_number'} />
+        </th>
+        {/* <th>Case Title</th> */}
+        <th onClick={() => handleSort('case_title')} style={{ cursor: 'pointer' }}>
+          Case Title <SortIcon active={sortKey === 'case_title'} />
+        </th>
+        {/* <th>Case Agent</th> */}
+        <th onClick={() => handleSort('case_agents')} style={{ cursor: 'pointer' }}>
+          Case Agent <SortIcon active={sortKey === 'case_agents'} />
+        </th>
         <th>Jurisdiction</th>
-        <th>Size</th>
+        {/* <th>Size</th> */}
+        <th onClick={() => handleSort('size')} style={{ cursor: 'pointer' }}>
+          Size <SortIcon active={sortKey === 'size'} />
+        </th>
 
       </tr>
     </thead>
   );
+  
 
   const FilesTableHeader = () => (
     <thead>
@@ -245,6 +341,7 @@ export const Personal = () => {
           />
         </th>
         <th>Name</th>
+        
       <th>Type</th>
       <th>Size</th>
       <th>Last Modified</th>
@@ -315,6 +412,9 @@ export const Personal = () => {
       </tr>
     );
   };
+
+  
+
 
   /* ...existing code... */
   // return (
@@ -549,6 +649,57 @@ export const Personal = () => {
         <Heading level={5}>Files</Heading>
 
         <Flex gap="0.5rem">
+          
+          
+
+          <div className="search-bar">
+            <div className="search-select-wrapper">
+              <select
+                className="search-select"
+                value={searchField}
+                onChange={e => setSearchField(e.target.value as SearchField)}
+              >
+                {SEARCH_FIELDS.map(f => (
+                  <option key={f.key} value={f.key}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+              <span className="select-arrow">▼</span>
+            </div>
+
+            <div className="search-input-wrapper">
+              <input
+                className="search-input"
+                type="text"
+                placeholder={`Search by ${
+                  SEARCH_FIELDS.find(f => f.key === searchField)?.label
+                }`}
+                value={searchValue}
+                onChange={e => setSearchValue(e.target.value)}
+                disabled={!cases.length}
+              />
+
+              {searchValue && (
+                <button
+                  className="clear-btn"
+                  onClick={() => setSearchValue('')}
+                  aria-label="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+
+          {/* <input
+            type="text"
+            placeholder="Search by case number, title, agent..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          /> */}
           <Button
             size="small"
             onClick={loadFiles}
@@ -691,7 +842,7 @@ export const Personal = () => {
             </tr>
           )}
 
-          {!loading && isRoot && cases.map(renderCaseRow)}
+          {!loading && isRoot && sortedCases.map(renderCaseRow)}
           {!loading && !isRoot && files.map(renderFileRow)}
         </tbody>
       </table>
