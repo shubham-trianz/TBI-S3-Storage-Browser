@@ -68,9 +68,26 @@
   font-size: 16px;
 }
 
+/* Breadcrumbs */
 .breadcrumb {
-  margin-bottom: 10px;
-  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 20px;
+  margin: 10px;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.breadcrumb-separator {
+  display: flex;
+  align-items: center;
+  font-size: 25px;  
+  color: #888;
 }
 
 .breadcrumb-link {
@@ -157,7 +174,6 @@
   cursor: not-allowed;
 }
 
-/* ---------- CLEAR BUTTON ---------- */
 
 .clear-btn {
   position: absolute;
@@ -200,8 +216,9 @@
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 60px;
+  height: 60px;
+  font-size: 30px;
   border-radius: 50%;
   background: linear-gradient(135deg, #64748b, #334155);
   color: #ffffff;
@@ -242,7 +259,49 @@
 /* Sign out */
 .signout-btn {
   width: 100%;
-  justify-content: flex-start;
+  display: flex;
+  justify-content: center;
   color: #dc2626 !important;
   font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  padding: 4px;
 }
+
+.signout-btn:hover {
+  background-color: #ccccd3;
+  transition: 0.3s ease;
+}
+
+
+/* Fullscreen loader */
+.fullscreen-loader {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loader-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 10px solid #ddd;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+

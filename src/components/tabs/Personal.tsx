@@ -12,6 +12,7 @@ import { DeleteObjects } from "../utils/DeleteObjects";
 import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
 import { generateAndCopyLink } from "../utils/generateLink";
+import Breadcrumbs from "../utils/Breadcrumbs"
 
 type CaseItem = {
   case_number: string;
@@ -32,6 +33,7 @@ export const Personal = () => {
   const [cases, setCases] = useState<CaseItem[]>([]);
   // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const currentPath = pathStack.join('');
+  console.log('currentPath: ', currentPath)
   const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const isRoot = pathStack.length === 0;
@@ -792,36 +794,11 @@ useEffect(() => {
 
       <Divider />
 
-      <div className="breadcrumb">
-        <span
-          className="breadcrumb-link"
-          onClick={() => setPathStack([])}
-        >
-          Home
-        </span>
-
-        {pathStack.map((segment, index) => {
-          const name = segment.replace('/', '');
-          const isLast = index === pathStack.length - 1;
-
-          return (
-            <span key={index}>
-              {' / '}
-              <span
-                className={!isLast ? 'breadcrumb-link' : ''}
-                style={isLast ? { color: '#555' } : undefined}
-                onClick={
-                  !isLast
-                    ? () => setPathStack(pathStack.slice(0, index + 1))
-                    : undefined
-                }
-              >
-                {name}
-              </span>
-            </span>
-          );
-        })}
-      </div>
+      
+      <Breadcrumbs 
+        pathStack={pathStack}
+        onNavigate={(x: string[]) => setPathStack(x)}
+      />
 
       <table className="storage-table">
         {isRoot ? (
