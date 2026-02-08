@@ -4,7 +4,7 @@ import { Tabs } from "@aws-amplify/ui-react";
 import { useUser } from "../context/UserContext";
 import { Personal } from "./tabs/Personal";
 import Shared from "./tabs/Shared";
-import Received from "./tabs/Received";
+import { Received } from "./tabs/Received";
 import Header from "./utils/Header";
 import FullScreenLoader from "./utils/FullScreenLoader";
 

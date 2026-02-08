@@ -13,6 +13,7 @@ import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
 import { generateAndCopyLink } from "../utils/generateLink";
 import Breadcrumbs from "../utils/Breadcrumbs"
+import { useCases } from '../../hooks/cases';
 
 type CaseItem = {
   case_number: string;
@@ -30,7 +31,7 @@ export const Personal = () => {
   const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [cases, setCases] = useState<CaseItem[]>([]);
+  // const [cases, setCases] = useState<CaseItem[]>([]);
   // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const currentPath = pathStack.join('');
   console.log('currentPath: ', currentPath)
@@ -42,8 +43,8 @@ export const Personal = () => {
   const selectAllRef = useRef<HTMLInputElement>(null);
   const [searchField, setSearchField] = useState<SearchField>('case_number');
   const [searchValue, setSearchValue] = useState('');
-
-
+  const { data: cases, isLoading } = useCases();
+  console.log('cases: ', cases)
   type SearchField = 'case_number' | 'case_title' | 'case_agents';
 
   const SEARCH_FIELDS: { key: SearchField; label: string }[] = [
@@ -58,24 +59,13 @@ export const Personal = () => {
   const [sortKey, setSortKey] = useState<SortKey>('case_number');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
-  // const filteredCases = useMemo(() => {
-  //   if (!searchTerm.trim()) return cases;
-
-  //   const q = searchTerm.toLowerCase();
-
-  //   return cases.filter(item =>
-  //     item.case_number.toLowerCase().includes(q) ||
-  //     item.case_title.toLowerCase().includes(q) ||
-  //     item.case_agents.toLowerCase().includes(q)
-  //   );
-  // }, [cases, searchTerm]);
-
   const filteredCases = useMemo(() => {
+    if (!cases) return [];
     if (!searchValue.trim()) return cases;
 
     const q = searchValue.toLowerCase();
 
-    return cases.filter(item =>
+    return cases?.filter(item =>
       String(item[searchField] ?? '')
         .toLowerCase()
         .includes(q)
@@ -85,10 +75,7 @@ export const Personal = () => {
 
   const sortedCases = useMemo(() => {
   const sorted = [...filteredCases].sort((a, b) => {
-    // const aVal = a[sortKey];
-    // const bVal = b[sortKey];
-
-    // numeric sort (size)
+    
     if (sortKey === 'size') {
       const aSize = typeof a.size === 'number' ? a.size : 0;
       const bSize = typeof b.size === 'number' ? b.size : 0;
@@ -120,8 +107,7 @@ const handleSort = (key: SortKey) => {
 useEffect(() => {
   setSearchValue('');
 }, [searchField]);
-  // const selectedFilePath =
-  //   selected.size === 1 ? [...selected][0] : null;
+  
   const rootFolderPrefix = identityId
   ? `private/${identityId}/`
   : null;
@@ -143,66 +129,67 @@ useEffect(() => {
   //   }
   //   return files.some(f => f.path.toLowerCase() === `${currentPath}${folderName}/`.toLowerCase());
   // };
-  const createCase = useCallback(async (payload: any) => {
-  const session = await fetchAuthSession();
-  const token = session.tokens?.idToken?.toString();
+//   const createCase = useCallback(async (payload: any) => {
+//   const session = await fetchAuthSession();
+//   const token = session.tokens?.idToken?.toString();
 
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+//   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
-  const res = await fetch(`${apiBaseUrl}/cases`, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+//   const res = await fetch(`${apiBaseUrl}/cases`, {
+//     method: "PUT",
+//     headers: {
+//       Authorization: `Bearer ${token}`,
+//       "Content-Type": "application/json",
+//     },
+//     body: JSON.stringify(payload),
+//   });
 
-  if (!res.ok) {
-    throw new Error(`Request failed: ${res.status}`);
-  }
+//   if (!res.ok) {
+//     throw new Error(`Request failed: ${res.status}`);
+//   }
 
-  return await res.json();
-}, []);
+//   return await res.json();
+// }, []);
 
   // const isSingleFileSelected =
   //   !!selectedFilePath && !selectedFilePath.endsWith("/");
 
-  const loadCases = useCallback(async () => {
-    try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.idToken?.toString();
+  // const loadCases = useCallback(async () => {
+  //   try {
+  //     const session = await fetchAuthSession();
+  //     const token = session.tokens?.idToken?.toString();
 
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-      console.log('apiBaseUrl: ', apiBaseUrl)
-      const res = await fetch(
-        `${apiBaseUrl}/cases`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          // body: JSON.stringify(caseData)
-        },
-      );
-      if (!res.ok) {
-        throw new Error(`Request failed: ${res.status}`);
-      }
+  //     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+  //     console.log('apiBaseUrl: ', apiBaseUrl)
+  //     const res = await fetch(
+  //       `${apiBaseUrl}/cases`,
+  //       {
+  //         method: "GET",
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //           "Content-Type": "application/json"
+  //         },
+  //         // body: JSON.stringify(caseData)
+  //       },
+  //     );
+  //     if (!res.ok) {
+  //       throw new Error(`Request failed: ${res.status}`);
+  //     }
     
-      const response = await res.json();
-      console.log('response: ', response)
-      setCases(response)
-      return response;
-    } catch (err) {
-      console.error('Error loading cases:', err);
-      return [];
-    }
-  }, [])
+  //     const response = await res.json();
+  //     console.log('response: ', response)
+  //     setCases(response)
+  //     return response;
+  //   } catch (err) {
+  //     console.error('Error loading cases:', err);
+  //     return [];
+  //   }
+  // }, [])
+  
 
-  useEffect(() => {
-    loadCases()
-  }, [loadCases])
+  // useEffect(() => {
+  //   loadCases()
+  // }, [loadCases])
 
   /* ------------------ AUTH INIT ------------------ */
   useEffect(() => {
@@ -301,12 +288,12 @@ useEffect(() => {
     <thead>
       <tr>
         <th>
-          <input
+          {/* <input
             ref={selectAllRef}
             type="checkbox"
-            checked={cases.length > 0 && selected.size === cases.length}
+            checked={cases?.length > 0 && selected.size === cases?.length}
             onChange={toggleSelectAll}
-          />
+          /> */}
         </th>
         {/* <th>Case Number</th> */}
         <th onClick={() => handleSort('case_number')} style={{ cursor: 'pointer' }}>
@@ -651,8 +638,6 @@ useEffect(() => {
         <Heading level={5}>Files</Heading>
 
         <Flex gap="0.5rem">
-          
-          
 
           <div className="search-bar">
             <div className="search-select-wrapper">
@@ -679,7 +664,7 @@ useEffect(() => {
                 }`}
                 value={searchValue}
                 onChange={e => setSearchValue(e.target.value)}
-                disabled={!cases.length}
+                disabled={!cases?.length}
               />
 
               {searchValue && (
@@ -756,12 +741,12 @@ useEffect(() => {
           {isRoot ? (
             <CreateCase
               basePath={`private/${identityId}/${currentPath}`}
-              onCreated={async (payload: any) => {
-                const created = await createCase(payload);
-                const createdCase = JSON.parse(created['item'])
-                createdCase.size = 16
-                setCases((prev) => [...prev, createdCase])
-              }}
+              // onCreated={async (payload: any) => {
+              //   // const created = await createCase(payload);
+              //   // const createdCase = JSON.parse(created['item'])
+              //   // createdCase.size = 16
+              //   // setCases((prev) => [...prev, createdCase])
+              // }}
               disabled={loading || !identityId}
             />
             )
@@ -814,13 +799,13 @@ useEffect(() => {
             </tr>
           )}
 
-          {!loading && files.length === 0 && (
+          {!loading && cases?.length === 0 && (
             <tr className="loading-row">
               <td colSpan={5}>Empty folder</td>
             </tr>
           )}
 
-          {!loading && isRoot && sortedCases.map(renderCaseRow)}
+          {!loading && isRoot && sortedCases?.map(renderCaseRow)}
           {!loading && !isRoot && files.map(renderFileRow)}
         </tbody>
       </table>
