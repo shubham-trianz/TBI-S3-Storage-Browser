@@ -4,7 +4,7 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 import {
   Flex,
   Heading,
-  Divider,
+  // Divider,
   Button,
 } from "@aws-amplify/ui-react";
 import { UploadButton } from "../utils/UploadButton";
@@ -24,15 +24,15 @@ import { useUser } from '../../context/UserContext';
 import { useCognitoUser } from '../../hooks/users';
 // import { useQueryClient } from '@tanstack/react-query';
  
-type CaseItem = {
-  case_number: string;
-  case_title: string;
-  jurisdiction: string;
-  case_agents: string;
-  email: string;
-  user_name: string;
-  size?: number;
-};
+// type CaseItem = {
+//   case_number: string;
+//   case_title: string;
+//   jurisdiction: string;
+//   case_agents: string;
+//   email: string;
+//   user_name: string;
+//   size?: number;
+// };
 
 
 
@@ -209,14 +209,15 @@ const sortedFiles = useMemo(() => {
     let result = 0;
 
     switch (fileSortKey) {
-      case 'name':
+      case 'name':{
         result = aName.localeCompare(bName, undefined, { 
           sensitivity: 'base',
           numeric: true 
         });
         break;
+      }
       
-      case 'evidence_number':
+      case 'evidence_number': {
         const aEvidenceNum = aEvidence?.evidence_number || '';
         const bEvidenceNum = bEvidence?.evidence_number || '';
         result = aEvidenceNum.localeCompare(bEvidenceNum, undefined, {
@@ -224,14 +225,16 @@ const sortedFiles = useMemo(() => {
           numeric: true
         });
         break;
+      }
       
-      case 'description':
+      case 'description': {
         const aDesc = aEvidence?.description || '';
         const bDesc = bEvidence?.description || '';
         result = aDesc.localeCompare(bDesc, undefined, { sensitivity: 'base' });
         break;
+      }
       
-      case 'uploaded':
+      case 'uploaded': {
         const aTime = aEvidence?.uploaded_at 
           ? new Date(aEvidence.uploaded_at).getTime()
           : a.lastModified?.getTime() || 0;
@@ -240,6 +243,7 @@ const sortedFiles = useMemo(() => {
           : b.lastModified?.getTime() || 0;
         result = aTime - bTime;
         break;
+      }
     }
 
     return fileSortOrder === 'asc' ? result : -result;

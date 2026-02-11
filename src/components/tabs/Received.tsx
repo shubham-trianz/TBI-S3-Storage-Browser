@@ -1,5 +1,5 @@
-import { list } from 'aws-amplify/storage';
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+// import { list } from 'aws-amplify/storage';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import {
   Flex,
@@ -20,15 +20,15 @@ import { useCaseEvidence } from '../../hooks/useCaseEvidence';
 
 // import { useCases 
 // } from '../../hooks/cases';
-type CaseItem = {
-  case_number: string;
-  case_title: string;
-  jurisdiction: string;
-  case_agents: string;
-  email: string;
-  user_name: string;
-  size?: number;
-};
+// type CaseItem = {
+//   case_number: string;
+//   case_title: string;
+//   jurisdiction: string;
+//   case_agents: string;
+//   email: string;
+//   user_name: string;
+//   size?: number;
+// };
 
 export const Received = () => {
   // const [files, setFiles] = useState<any[]>([]);
@@ -40,11 +40,11 @@ export const Received = () => {
   const isInsideCase = activeCase !== null;
   console.log('isInsideCase: ', isInsideCase)
   console.log('activeCase: ', activeCase)
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
   const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [cases, setCases] = useState<CaseItem[]>([]);
+  // const [cases, setCases] = useState<CaseItem[]>([]);
   // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const currentPath = pathStack.join('');
   
@@ -121,57 +121,57 @@ export const Received = () => {
     { key: 'description', label: 'Description' }
   ];
 
-  type SortKey = 'case_number' | 'case_title' | 'case_agents' | 'size';
+  // type SortKey = 'case_number' | 'case_title' | 'case_agents' | 'size';
   type SortOrder = 'asc' | 'desc';
 
-  const [sortKey, setSortKey] = useState<SortKey>('case_number');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  // const [sortKey, setSortKey] = useState<SortKey>('case_number');
+  // const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   
-  const filteredCases = useMemo(() => {
-    if (!cases || !Array.isArray(cases)) return [];
-    if (!searchValue.trim()) return cases;
+  // const filteredCases = useMemo(() => {
+  //   if (!cases || !Array.isArray(cases)) return [];
+  //   if (!searchValue.trim()) return cases;
 
-    const q = searchValue.toLowerCase();
+  //   const q = searchValue.toLowerCase();
 
-    return cases?.filter(item =>
-      String(item[searchField] ?? '')
-        .toLowerCase()
-        .includes(q)
-    );
-  }, [cases, searchField, searchValue]);
+  //   return cases?.filter(item =>
+  //     String(item[searchField] ?? '')
+  //       .toLowerCase()
+  //       .includes(q)
+  //   );
+  // }, [cases, searchField, searchValue]);
 
 
-  const sortedCases = useMemo(() => {
-  const sorted = [...filteredCases].sort((a, b) => {
+//   const sortedCases = useMemo(() => {
+//   const sorted = [...filteredCases].sort((a, b) => {
     
-    if (sortKey === 'size') {
-      const aSize = typeof a.size === 'number' ? a.size : 0;
-      const bSize = typeof b.size === 'number' ? b.size : 0;
-      return aSize - bSize;
-    }
+//     if (sortKey === 'size') {
+//       const aSize = typeof a.size === 'number' ? a.size : 0;
+//       const bSize = typeof b.size === 'number' ? b.size : 0;
+//       return aSize - bSize;
+//     }
 
-    const aVal = String(a[sortKey] ?? '');
-    const bVal = String(b[sortKey] ?? '');
+//     const aVal = String(a[sortKey] ?? '');
+//     const bVal = String(b[sortKey] ?? '');
 
-    // string sort
-    return String(aVal ?? '').localeCompare(String(bVal ?? ''), undefined, {
-      sensitivity: 'base',
-      numeric: true
-    });
-  });
+//     // string sort
+//     return String(aVal ?? '').localeCompare(String(bVal ?? ''), undefined, {
+//       sensitivity: 'base',
+//       numeric: true
+//     });
+//   });
 
-  return sortOrder === 'asc' ? sorted : sorted.reverse();
-}, [filteredCases, sortKey, sortOrder]);
+//   return sortOrder === 'asc' ? sorted : sorted.reverse();
+// }, [filteredCases, sortKey, sortOrder]);
 
-const handleSort = (key: SortKey) => {
-  if (sortKey === key) {
-    setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
-  } else {
-    setSortKey(key);
-    setSortOrder('asc');
-  }
-};
+// const handleSort = (key: SortKey) => {
+//   if (sortKey === key) {
+//     setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+//   } else {
+//     setSortKey(key);
+//     setSortOrder('asc');
+//   }
+// };
 
 // File sorting and filtering with evidence metadata
 type FileSortKey = 'name' | 'evidence_number' | 'description' | 'uploaded';
@@ -222,14 +222,15 @@ const sortedFiles = useMemo(() => {
     let result = 0;
 
     switch (fileSortKey) {
-      case 'name':
+      case 'name': {
         result = aName.localeCompare(bName, undefined, { 
           sensitivity: 'base',
           numeric: true 
         });
         break;
+      }
       
-      case 'evidence_number':
+      case 'evidence_number': {
         const aEvidenceNum = aEvidence?.evidence_number || '';
         const bEvidenceNum = bEvidence?.evidence_number || '';
         result = aEvidenceNum.localeCompare(bEvidenceNum, undefined, {
@@ -237,14 +238,16 @@ const sortedFiles = useMemo(() => {
           numeric: true
         });
         break;
+      }
       
-      case 'description':
+      case 'description': {
         const aDesc = aEvidence?.description || '';
         const bDesc = bEvidence?.description || '';
         result = aDesc.localeCompare(bDesc, undefined, { sensitivity: 'base' });
         break;
+      }
       
-      case 'uploaded':
+      case 'uploaded': {
         const aTime = aEvidence?.uploaded_at 
           ? new Date(aEvidence.uploaded_at).getTime() 
           : 0;
@@ -253,6 +256,7 @@ const sortedFiles = useMemo(() => {
           : 0;
         result = aTime - bTime;
         break;
+      }
     }
 
     return result;
@@ -368,53 +372,53 @@ useEffect(() => {
     init();
   }, []);
 
-  function getFirstLevelItems(
-    items: any[],
-    basePath: string
-  ): any[] {
-    const map = new Map<string, any>();
+  // function getFirstLevelItems(
+  //   items: any[],
+  //   basePath: string
+  // ): any[] {
+  //   const map = new Map<string, any>();
 
-    if (!basePath.endsWith('/')) {
-      basePath += '/';
-    }
+  //   if (!basePath.endsWith('/')) {
+  //     basePath += '/';
+  //   }
 
-    for (const item of items) {
+  //   for (const item of items) {
 
-      if (!item.path.startsWith(basePath)) continue;
+  //     if (!item.path.startsWith(basePath)) continue;
 
-      // const relative = item.path.replace(basePath, '');
-      const relative = item.path.slice(basePath.length);
-      console.log('relative: ', relative)
-      // const parts = relative.split('/').filter(Boolean);
-      const parts = relative.split('/').filter(Boolean);
+  //     // const relative = item.path.replace(basePath, '');
+  //     const relative = item.path.slice(basePath.length);
+  //     console.log('relative: ', relative)
+  //     // const parts = relative.split('/').filter(Boolean);
+  //     const parts = relative.split('/').filter(Boolean);
 
-      console.log('parts: ', parts)
-      // if (parts.length === 1 && !item.path.endsWith('/')) {
-      //   map.set(item.path, item);
-      //   continue;
-      // }
-      if (parts.length === 1) {
-        map.set(item.path, {
-          ...item,
-          path: item.path
-        });
-        continue;
-      }
+  //     console.log('parts: ', parts)
+  //     // if (parts.length === 1 && !item.path.endsWith('/')) {
+  //     //   map.set(item.path, item);
+  //     //   continue;
+  //     // }
+  //     if (parts.length === 1) {
+  //       map.set(item.path, {
+  //         ...item,
+  //         path: item.path
+  //       });
+  //       continue;
+  //     }
 
-      // subfolder name
-      const firstPart = parts[0];
-      const folderPath = `${basePath}${firstPart}/`;
+  //     // subfolder name
+  //     const firstPart = parts[0];
+  //     const folderPath = `${basePath}${firstPart}/`;
 
-      if (!map.has(folderPath)) {
-        map.set(folderPath, {
-          path: folderPath,
-          isFolder: true
-        });
-      }
-    }
+  //     if (!map.has(folderPath)) {
+  //       map.set(folderPath, {
+  //         path: folderPath,
+  //         isFolder: true
+  //       });
+  //     }
+  //   }
 
-    return Array.from(map.values());
-  }
+  //   return Array.from(map.values());
+  // }
 
   // useEffect(() => {
   //   loadFiles();
@@ -446,45 +450,45 @@ useEffect(() => {
     }
   };
 
-  const CasesTableHeader = () => (
-    <thead>
-      <tr>
-        <th>
-          <input
-            ref={selectAllRef}
-            type="checkbox"
-            checked={cases.length > 0 && selected.size === cases.length}
-            onChange={toggleSelectAll}
-          />
-        </th>
-        <th 
-          onClick={() => handleSort('case_number')}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Case Number {sortKey === 'case_number' && (sortOrder === 'asc' ? '↑' : '↓')}
-        </th>
-        <th 
-          onClick={() => handleSort('case_title')}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Case Title {sortKey === 'case_title' && (sortOrder === 'asc' ? '↑' : '↓')}
-        </th>
-        <th 
-          onClick={() => handleSort('case_agents')}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Case Agent {sortKey === 'case_agents' && (sortOrder === 'asc' ? '↑' : '↓')}
-        </th>
-        <th>Jurisdiction</th>
-        <th 
-          onClick={() => handleSort('size')}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Size {sortKey === 'size' && (sortOrder === 'asc' ? '↑' : '↓')}
-        </th>
-      </tr>
-    </thead>
-  );
+  // const CasesTableHeader = () => (
+  //   <thead>
+  //     <tr>
+  //       <th>
+  //         <input
+  //           ref={selectAllRef}
+  //           type="checkbox"
+  //           checked={cases.length > 0 && selected.size === cases.length}
+  //           onChange={toggleSelectAll}
+  //         />
+  //       </th>
+  //       <th 
+  //         onClick={() => handleSort('case_number')}
+  //         style={{ cursor: 'pointer', userSelect: 'none' }}
+  //       >
+  //         Case Number {sortKey === 'case_number' && (sortOrder === 'asc' ? '↑' : '↓')}
+  //       </th>
+  //       <th 
+  //         onClick={() => handleSort('case_title')}
+  //         style={{ cursor: 'pointer', userSelect: 'none' }}
+  //       >
+  //         Case Title {sortKey === 'case_title' && (sortOrder === 'asc' ? '↑' : '↓')}
+  //       </th>
+  //       <th 
+  //         onClick={() => handleSort('case_agents')}
+  //         style={{ cursor: 'pointer', userSelect: 'none' }}
+  //       >
+  //         Case Agent {sortKey === 'case_agents' && (sortOrder === 'asc' ? '↑' : '↓')}
+  //       </th>
+  //       <th>Jurisdiction</th>
+  //       <th 
+  //         onClick={() => handleSort('size')}
+  //         style={{ cursor: 'pointer', userSelect: 'none' }}
+  //       >
+  //         Size {sortKey === 'size' && (sortOrder === 'asc' ? '↑' : '↓')}
+  //       </th>
+  //     </tr>
+  //   </thead>
+  // );
 
   const SharedCasesTableHeader = () => (
     <thead>
@@ -493,7 +497,7 @@ useEffect(() => {
           <input
             ref={selectAllRef}
             type="checkbox"
-            checked={cases.length > 0 && selected.size === cases.length}
+            checked={receivedCases?.cases?.length > 0 && selected.size === receivedCases?.cases?.length}
             onChange={toggleSelectAll}
           />
         </th>
@@ -704,7 +708,7 @@ useEffect(() => {
                 }`}
                 value={searchValue}
                 onChange={e => setSearchValue(e.target.value)}
-                disabled={isRoot ? !cases?.length : !files?.length}
+                disabled={isRoot ? !receivedCases?.cases?.length : !files?.length}
               />
 
               {searchValue && (
@@ -812,11 +816,11 @@ useEffect(() => {
             </tr>
           )} */}
 
-          {!loading && cases?.length === 0 && (
+          {/* {!loading && cases?.length === 0 && (
             <tr className="loading-row">
               <td colSpan={5}>Empty folder</td>
             </tr>
-          )}
+          )} */}
 
           {/* {!loading && isRoot && receivedCases?.cases?.map(renderSharedCaseRow)} */}
           {isRoot && receivedCases?.cases?.map(renderSharedCaseRow)}
