@@ -116,7 +116,7 @@ export const Personal = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   const filteredCases = useMemo(() => {
-    if (!cases) return [];
+    if (!cases || !Array.isArray(cases)) return [];
     if (!searchValue.trim()) return cases;
 
     const q = searchValue.toLowerCase();
@@ -538,7 +538,11 @@ useEffect(() => {
         <td>📁 {name}</td>
         <td>{item.case_title}</td>
         <td>{item.case_agents}</td>
-        <td>{(item.jurisdiction).join(', ')}</td>
+        <td>
+          {Array.isArray(item.jurisdiction) 
+            ? item.jurisdiction.join(', ') 
+            : item.jurisdiction || '—'}
+        </td>
         <td>{formatBytes(item.size)}</td>
       </tr>
     );
@@ -701,12 +705,11 @@ useEffect(() => {
             </div>
           </div>
 
-          <Button
-            size='small'
-            onClick={() => setOpen(true)}
-          >
-            Share
-          </Button>
+          {isRoot && (
+            <Button size='small' onClick={() => setOpen(true)}>
+              Share
+            </Button>
+          )}
           {open && (
             <ShareDialog
               open={open}
@@ -934,4 +937,4 @@ useEffect(() => {
         )}
     </>
   );
-};  
+};
