@@ -13,8 +13,14 @@ import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
 import { generateAndCopyLink } from "../utils/generateLink";
 import Breadcrumbs from "../utils/Breadcrumbs"
-import { useCases } from '../../hooks/cases';
+import { useCases, useShareCaseTo } from '../../hooks/cases';
+// import ShareDialog from '../utils/ShareDialog';
 
+import ShareDialog from '../utils/ShareDialog';
+import { useUser } from '../../context/UserContext';
+import { useCognitoUser } from '../../hooks/users';
+import { useQueryClient } from '@tanstack/react-query';
+ 
 type CaseItem = {
   case_number: string;
   case_title: string;
@@ -31,6 +37,9 @@ export const Personal = () => {
   const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const { user_name } = useUser()
+
   // const [cases, setCases] = useState<CaseItem[]>([]);
   // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const currentPath = pathStack.join('');
@@ -44,7 +53,12 @@ export const Personal = () => {
   const [searchField, setSearchField] = useState<SearchField>('case_number');
   const [searchValue, setSearchValue] = useState('');
   const { data: cases, isLoading } = useCases();
-  console.log('cases: ', cases)
+  const { mutate: shareCaseTo } = useShareCaseTo();
+
+  
+  console.log('casessss: ', cases)
+  const { data: cognitoUsers,  } = useCognitoUser()
+  console.log('cognitoUsers: ', cognitoUsers)
   type SearchField = 'case_number' | 'case_title' | 'case_agents';
 
   const SEARCH_FIELDS: { key: SearchField; label: string }[] = [
@@ -207,9 +221,11 @@ useEffect(() => {
     const map = new Map<string, any>();
 
     for (const item of items) {
+      console.log('item: ', item)
       const relative = item.path.replace(basePath, '');
+      console.log('relative: ', relative)
       const parts = relative.split('/').filter(Boolean);
-
+      console.log('parts: ', parts)
       if (parts.length === 1 && !item.path.endsWith('/')) {
         map.set(item.path, item);
         continue;
@@ -225,7 +241,7 @@ useEffect(() => {
         }
       }
     }
-
+    console.log('map: ', map)
     return Array.from(map.values());
   }
   const loadFiles = useCallback(async () => {
@@ -362,7 +378,7 @@ useEffect(() => {
         <td>📁 {name}</td>
         <td>{item.case_title}</td>
         <td>{item.case_agents}</td>
-        <td>{JSON.parse(item.jurisdiction).join(', ')}</td>
+        <td>{(item.jurisdiction).join(', ')}</td>
         <td>{formatBytes(item.size)}</td>
       </tr>
     );
@@ -596,6 +612,14 @@ useEffect(() => {
   //   </>
   // );
 
+  const [open, setOpen] = useState(false)
+  const users = cognitoUsers
+
+  const extractCaseNumber = (path: string) => {
+    const parts = path.split("/");
+    return parts[parts.length - 2]; // "2026-0000003"
+  };
+
   return (
     <>
       {/* {notification && (
@@ -679,6 +703,84 @@ useEffect(() => {
             </div>
           </div>
 
+          <Button
+            size='small'
+            onClick={() => setOpen(true)}
+          >
+            Share
+          </Button>
+          {open && (
+            <ShareDialog
+              open={open}
+              users={users}
+              selectedFiles={selected}
+              sharedTo={
+                selected.size === 1
+                  ? cases?.find(
+                      c => c.case_number === extractCaseNumber([...selected][0])
+                    )?.shared_to
+                  : []
+              }
+              onClose={() => setOpen(false)}
+              onShare={async (selected) => {
+              const now = new Date().toISOString();
+              const items = [];
+
+              const selectedUsers = selected.users;
+              const selectedFiles = selected.files;
+              console.log('selectedUsers: ', selectedUsers)
+              for (const file of selectedFiles) {
+                const caseNumber = extractCaseNumber(file);
+
+                // 🔑 get metadata from your case list
+                const caseMeta = cases?.find(
+                  c => c.case_number === caseNumber
+                );
+
+                if (!caseMeta) continue; // safety
+
+                for (const user of selectedUsers) {
+                  items.push({
+                    receiver_user_id: `RECEIVER#${user.user_name}`,
+                    case_number: `CASE#${caseNumber}`,
+
+                    // GSI for owner-side queries
+                    gsi1pk: `OWNER#${user_name}`,
+                    gsi1sk: `CASE#${caseNumber}#RECEIVER#${user.user_name}`,
+
+                    // Identifiers
+                    receiver_user: user.user_name,
+                    receiver_email: user.email,
+                    owner_user: user_name,
+                    
+                    // case_number: caseNumber,
+
+                    // 📦 copied metadata
+                    case_title: caseMeta.case_title,
+                    jurisdiction: caseMeta.jurisdiction,
+                    case_agents: caseMeta.case_agents,
+                    size: caseMeta.size ?? 0,
+                    source_key: caseMeta.source_key,
+                    owner_email: caseMeta.email,
+
+                    // Permissions
+                    permissions: {
+                      read: user.read,
+                      write: user.write
+                    },
+
+                    shared_at: now
+                  });
+                }
+              }
+
+              console.log('Shared case items:', items);
+              await shareCaseTo(items);
+              // queryClient.invalidateQueries({ queryKey: ['cases'] })
+            }}
+
+            />
+          )}
 
           {/* <input
             type="text"
@@ -783,6 +885,9 @@ useEffect(() => {
       <Breadcrumbs 
         pathStack={pathStack}
         onNavigate={(x: string[]) => setPathStack(x)}
+        onExitCase={() => {
+        setPathStack([]);
+      }}
       />
 
       <table className="storage-table">

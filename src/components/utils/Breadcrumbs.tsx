@@ -3,16 +3,17 @@ import { MdChevronRight } from 'react-icons/md';
 type Props = {
   pathStack: string[];
   onNavigate: (x: string[]) => void
+  onExitCase: () => void;
 }
 
-export default function Breadcrumbs({onNavigate, pathStack}: Props) {
+export default function Breadcrumbs({onNavigate, onExitCase, pathStack}: Props) {
   
   return (
     
     <div className="breadcrumb">
       <span 
         className="breadcrumb-link"
-        onClick={() => onNavigate([])}
+        onClick={onExitCase}
       >
         Home
       </span>
