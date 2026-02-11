@@ -66,3 +66,15 @@ export interface ReceiveCasePayload {
 
 
 
+export interface EvidenceItem {
+  evidence_number: string;
+  description: string;
+  s3_key: string;
+  uploaded_at: string;
+}
+
+export interface EvidenceListResponse {
+  items: EvidenceItem[];
+  nextCursor?: string | null;
+}
+
