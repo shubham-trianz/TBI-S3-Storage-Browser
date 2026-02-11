@@ -30,7 +30,7 @@ type CaseItem = {
   size?: number;
 };
 
-const Received = () => {
+export const Received = () => {
   // const [files, setFiles] = useState<any[]>([]);
   const [baseKey, setBaseKey] = useState<string | null>(null); // case root
   const [activeCase, setActiveCase] = useState<null | {

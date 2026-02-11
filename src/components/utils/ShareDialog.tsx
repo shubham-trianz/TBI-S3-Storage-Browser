@@ -116,10 +116,33 @@ useEffect(() => {
     value: boolean
   ) => {
     setSelectedUsers(prev =>
-      prev.map(u =>
-        u.user_name === userId ? { ...u, [permission]: value } : u
-      )
-    );
+    prev.map(user => {
+      if (user.user_name !== userId) return user;
+
+      // ✅ If WRITE is checked → automatically enable READ
+      if (permission === 'write' && value) {
+        return {
+          ...user,
+          write: true,
+          read: true
+        };
+      }
+
+      // If READ is unchecked → remove WRITE
+      if (permission === 'read' && !value) {
+        return {
+          ...user,
+          read: false,
+          write: false
+        };
+      }
+
+      return {
+        ...user,
+        [permission]: value
+      };
+    })
+  );
   };
 
   const handleShare = () => {
@@ -206,6 +229,7 @@ useEffect(() => {
                         control={
                           <Checkbox
                             checked={user.write}
+                            disabled={!user.read}
                             onChange={(e) =>
                               updatePermission(
                                 user.user_name,
