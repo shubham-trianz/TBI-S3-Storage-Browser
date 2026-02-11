@@ -12,7 +12,7 @@ import { useState, useRef } from "react";
 // import { fetchAuthSession } from "aws-amplify/auth";
 import { FileUploader } from '@aws-amplify/ui-react-storage';
 import { useUser } from "../../context/UserContext";
-
+import { useQueryClient } from "@tanstack/react-query";
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -29,7 +29,7 @@ export function UploadDialog({
   // const [uploadedBy, setUploadedBy] = useState("");
   const [error, setError] = useState<string | null>(null);
   const { user_name } = useUser();
-
+  const queryClient = useQueryClient()
   // const [meta, setMeta] = useState({
   //   evidenceNumber: "",
   //   description: "",
@@ -165,6 +165,7 @@ export function UploadDialog({
             isResumable
             autoUpload={false}
             processFile={processFile}
+            onUploadSuccess={()=> queryClient.invalidateQueries({ queryKey: ['cases'] })}
           />
 
           {error && (

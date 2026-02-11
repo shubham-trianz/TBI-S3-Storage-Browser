@@ -13,10 +13,11 @@ import {
   Chip,
 } from "@mui/material";
 import { useUser } from "../../context/UserContext";
+import { useCreateCase } from "../../hooks/cases";
 
 type CreateCaseProps = {
   basePath: string;
-  onCreated: (payload: any) => void;
+  // onCreated: (payload: any) => void;
   disabled?: boolean;
   onDuplicateError?: (message: string, type: 'error' | 'success') => void;
   folderExists?: (folderName: string) => boolean;
@@ -35,7 +36,7 @@ const JURISDICTIONS = [
 
 export const CreateCase = ({
   basePath,
-  onCreated,
+  // onCreated,
   disabled,
   onDuplicateError,
   folderExists,
@@ -50,6 +51,9 @@ export const CreateCase = ({
   const [jurisdiction, setJurisdiction] = useState<string[]>([]);
   const [caseAgents, setCaseAgents] = useState("");
   const { user_name,email } = useUser();
+
+  const { mutate: createCase } = useCreateCase();
+
 
   const validateCaseNumber = (value: string) =>
     /^\d{4}-\d{7}$/.test(value);
@@ -101,18 +105,18 @@ export const CreateCase = ({
       const folderPath = `${basePath}${caseNumber}/`;
 
       await uploadData({
-        path: `${folderPath}${caseNumber}_metadata.json`,
-        data: JSON.stringify({ created: true }),
-        options: {
-          metadata: {
-            user_name: user_name,
-            user_email: email || '',
-            case_number: caseNumber,
-            case_title: caseTitle,
-            jurisdiction: JSON.stringify(jurisdiction),
-            case_agents: caseAgents,
-          },
-        },
+        path: `${folderPath}`,
+        data: new Blob([]),
+        // options: {
+        //   metadata: {
+        //     user_name: user_name,
+        //     user_email: email || '',
+        //     case_number: caseNumber,
+        //     case_title: caseTitle,
+        //     jurisdiction: JSON.stringify(jurisdiction),
+        //     case_agents: caseAgents,
+        //   },
+        // },
       }).result;
       const payload = {
         user_name: user_name,
@@ -121,12 +125,14 @@ export const CreateCase = ({
         case_title: caseTitle,
         jurisdiction: JSON.stringify(jurisdiction),
         case_agents: caseAgents,
-        source_key: folderPath
+        source_key: folderPath,
       }
 
       onDuplicateError?.(`"${caseNumber}" created successfully`, 'success');
       setOpen(false);
-      onCreated(payload);
+      // onCreated(payload);
+      console.log('payload: ', payload)
+      await createCase(payload);
     } catch (err) {
       console.error("Create case failed", err);
       setError("Failed to create Case Evidence Repository");
