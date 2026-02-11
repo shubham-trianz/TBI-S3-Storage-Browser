@@ -16,6 +16,7 @@ import Breadcrumbs from "../utils/Breadcrumbs"
 import { useReceivedCases } from '../../hooks/cases';
 import { useUser } from '../../context/UserContext';
 import { useListS3Objects } from '../../hooks/lists3objects';
+import { useCaseEvidence } from '../../hooks/useCaseEvidence';
 
 // import { useCases 
 // } from '../../hooks/cases';
@@ -29,7 +30,7 @@ type CaseItem = {
   size?: number;
 };
 
-export const Received = () => {
+const Received = () => {
   // const [files, setFiles] = useState<any[]>([]);
   const [baseKey, setBaseKey] = useState<string | null>(null); // case root
   const [activeCase, setActiveCase] = useState<null | {
@@ -46,6 +47,37 @@ export const Received = () => {
   const [cases, setCases] = useState<CaseItem[]>([]);
   // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const currentPath = pathStack.join('');
+  
+  // Get current case number from pathStack
+  const currentCaseNumber = pathStack.length > 0 ? pathStack[0].replace('/', '') : null;
+  
+  // Fetch evidence metadata for the current case
+  const {
+    data: evidenceData,
+    isLoading: isEvidenceLoading,
+    isFetching: isEvidenceFetching,
+    refetch: refetchEvidence,
+  } = useCaseEvidence(currentCaseNumber ?? '');
+
+  // Create evidence lookup map
+  const evidenceByKey = useMemo(() => {
+    const map = new Map<string, any>();
+    evidenceData?.items?.forEach(ev => {
+      // Map by full s3_key
+      map.set(ev.s3_key, ev);
+      
+      // Also map by filename only for easier lookup
+      const filename = ev.s3_key?.split('/').pop();
+      if (filename) {
+        map.set(filename, ev);
+      }
+    });
+    return map;
+  }, [evidenceData]);
+
+  console.log('evidenceData: ', evidenceData);
+  console.log('evidenceByKey: ', evidenceByKey);
+
   // const currentPrefix = pathStack[pathStack.length - 1];
   const currentPrefix = baseKey
   ? `${baseKey}${pathStack.length ? pathStack.join('/') + '/' : ''}`
@@ -67,17 +99,26 @@ export const Received = () => {
   const selectedFolders = [...selected].filter(p => p.endsWith("/"));
   const selectAllRef = useRef<HTMLInputElement>(null);
   const [searchField, setSearchField] = useState<SearchField>('case_number');
+  const [evidenceSearchField, setEvidenceSearchField] = useState<EvidenceSearchField>('name');
   const [searchValue, setSearchValue] = useState('');
   // const { data: cases, isLoading } = useCases();
   // console.log('cases: ', cases)
   const {data: receivedCases} = useReceivedCases(user_name)
   console.log('receivedCases: ', receivedCases)
+  
   type SearchField = 'case_number' | 'case_title' | 'case_agents';
+  type EvidenceSearchField = 'name' | 'evidence_number' | 'description';
 
   const SEARCH_FIELDS: { key: SearchField; label: string }[] = [
     { key: 'case_number', label: 'Case Number' },
     { key: 'case_title', label: 'Case Title' },
     { key: 'case_agents', label: 'Case Agent' }
+  ];
+
+  const EVIDENCE_SEARCH_FIELDS: { key: EvidenceSearchField; label: string }[] = [
+    { key: 'name', label: 'File Name' },
+    { key: 'evidence_number', label: 'Evidence Number' },
+    { key: 'description', label: 'Description' }
   ];
 
   type SortKey = 'case_number' | 'case_title' | 'case_agents' | 'size';
@@ -88,7 +129,7 @@ export const Received = () => {
 
   
   const filteredCases = useMemo(() => {
-    if (!cases) return [];
+    if (!cases || !Array.isArray(cases)) return [];
     if (!searchValue.trim()) return cases;
 
     const q = searchValue.toLowerCase();
@@ -132,9 +173,106 @@ const handleSort = (key: SortKey) => {
   }
 };
 
+// File sorting and filtering with evidence metadata
+type FileSortKey = 'name' | 'evidence_number' | 'description' | 'uploaded';
+const [fileSortKey, setFileSortKey] = useState<FileSortKey>('name');
+const [fileSortOrder, setFileSortOrder] = useState<SortOrder>('asc');
+
+const filteredFiles = useMemo(() => {
+  if (!searchValue.trim() || isRoot) return files;
+
+  const q = searchValue.toLowerCase();
+
+  return files.filter(item => {
+    const name = item.path.split('/').filter(Boolean).pop() || '';
+    const evidence = evidenceByKey.get(item.path) || evidenceByKey.get(name);
+
+    switch (evidenceSearchField) {
+      case 'name':
+        return name.toLowerCase().includes(q);
+      
+      case 'evidence_number':
+        return evidence?.evidence_number?.toLowerCase().includes(q) || false;
+      
+      case 'description':
+        return evidence?.description?.toLowerCase().includes(q) || false;
+      
+      default:
+        return false;
+    }
+  });
+}, [files, searchValue, evidenceSearchField, evidenceByKey, isRoot]);
+
+const sortedFiles = useMemo(() => {
+  const sorted = [...filteredFiles].sort((a, b) => {
+    const aName = a.path.split('/').filter(Boolean).pop() || '';
+    const bName = b.path.split('/').filter(Boolean).pop() || '';
+    
+    // Folders always come first
+    const aIsFolder = a.path.endsWith('/');
+    const bIsFolder = b.path.endsWith('/');
+    if (aIsFolder !== bIsFolder) {
+      return aIsFolder ? -1 : 1;
+    }
+
+    // Get evidence data for sorting
+    const aEvidence = evidenceByKey.get(a.path) || evidenceByKey.get(aName);
+    const bEvidence = evidenceByKey.get(b.path) || evidenceByKey.get(bName);
+
+    let result = 0;
+
+    switch (fileSortKey) {
+      case 'name':
+        result = aName.localeCompare(bName, undefined, { 
+          sensitivity: 'base',
+          numeric: true 
+        });
+        break;
+      
+      case 'evidence_number':
+        const aEvidenceNum = aEvidence?.evidence_number || '';
+        const bEvidenceNum = bEvidence?.evidence_number || '';
+        result = aEvidenceNum.localeCompare(bEvidenceNum, undefined, {
+          sensitivity: 'base',
+          numeric: true
+        });
+        break;
+      
+      case 'description':
+        const aDesc = aEvidence?.description || '';
+        const bDesc = bEvidence?.description || '';
+        result = aDesc.localeCompare(bDesc, undefined, { sensitivity: 'base' });
+        break;
+      
+      case 'uploaded':
+        const aTime = aEvidence?.uploaded_at 
+          ? new Date(aEvidence.uploaded_at).getTime() 
+          : 0;
+        const bTime = bEvidence?.uploaded_at 
+          ? new Date(bEvidence.uploaded_at).getTime() 
+          : 0;
+        result = aTime - bTime;
+        break;
+    }
+
+    return result;
+  });
+
+  return fileSortOrder === 'asc' ? sorted : sorted.reverse();
+}, [filteredFiles, fileSortKey, fileSortOrder, evidenceByKey]);
+
+const handleFileSort = (key: FileSortKey) => {
+  if (fileSortKey === key) {
+    setFileSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+  } else {
+    setFileSortKey(key);
+    setFileSortOrder('asc');
+  }
+};
+
 useEffect(() => {
   setSearchValue('');
-}, [searchField]);
+}, [searchField, evidenceSearchField]);
   
   const rootFolderPrefix = identityId
   ? `private/${identityId}/`
@@ -258,47 +396,45 @@ useEffect(() => {
       if (parts.length === 1) {
         map.set(item.path, {
           ...item,
-          type: 'file'
+          path: item.path
         });
         continue;
       }
 
-      const folderName = parts[0];
-      const folderPath = basePath + folderName + '/';
+      // subfolder name
+      const firstPart = parts[0];
+      const folderPath = `${basePath}${firstPart}/`;
 
       if (!map.has(folderPath)) {
         map.set(folderPath, {
           path: folderPath,
-          type: 'folder'
+          isFolder: true
         });
       }
-
-     
     }
-    console.log('map: ', map)
+
     return Array.from(map.values());
   }
-  useEffect(() => {
-      setCases([{
-      case_number: '2019-0000001',
-      case_title: 'Homicide',
-      jurisdiction: JSON.stringify(["3rd Jurisdiction","6th Jurisdiction","5th Jurisdiction"]),
-      case_agents: 'Shubham',
-      email: 'shubhamparashar65000@gmail.com',
-      user_name: 'e40844f8-9021-70cd-f017-4671f72ca39e',
-      size: 0  
-    }])
-  }, [])
-  const keys = [
-    {path: "private/us-east-1:b36012c8-c4d0-cca5-4d73-f877d27e3339/2019-0000001/evidence/sub_evidence/demo 2.mp4"},
-    {path: "private/us-east-1:b36012c8-c4d0-cca5-4d73-f877d27e3339/2019-0000001/avatar.mp4"}
-  ]
 
-    const toggleSelect = (path: string) => {
+  // useEffect(() => {
+  //   loadFiles();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [identityId, currentPath]);
+
+  const formatBytes = (bytes?: number) =>
+    bytes
+      ? `${(bytes / 1024 / 1024).toFixed(2)} MB`
+      : '—';
+
+  const toggleSelect = (path: string) => {
     setSelected(prev => {
-      const next = new Set(prev);
-      next.has(path) ? next.delete(path) : next.add(path);
-      return next;
+      const newSet = new Set(prev);
+      if (newSet.has(path)) {
+        newSet.delete(path);
+      } else {
+        newSet.add(path);
+      }
+      return newSet;
     });
   };
 
@@ -306,91 +442,71 @@ useEffect(() => {
     if (selected.size === files.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(files.map(f => f.path)));
+      setSelected(new Set(files.map((f: any) => f.path)));
     }
   };
 
-  useEffect(() => {
-    if (!selectAllRef.current) return;
+  const CasesTableHeader = () => (
+    <thead>
+      <tr>
+        <th>
+          <input
+            ref={selectAllRef}
+            type="checkbox"
+            checked={cases.length > 0 && selected.size === cases.length}
+            onChange={toggleSelectAll}
+          />
+        </th>
+        <th 
+          onClick={() => handleSort('case_number')}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          Case Number {sortKey === 'case_number' && (sortOrder === 'asc' ? '↑' : '↓')}
+        </th>
+        <th 
+          onClick={() => handleSort('case_title')}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          Case Title {sortKey === 'case_title' && (sortOrder === 'asc' ? '↑' : '↓')}
+        </th>
+        <th 
+          onClick={() => handleSort('case_agents')}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          Case Agent {sortKey === 'case_agents' && (sortOrder === 'asc' ? '↑' : '↓')}
+        </th>
+        <th>Jurisdiction</th>
+        <th 
+          onClick={() => handleSort('size')}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          Size {sortKey === 'size' && (sortOrder === 'asc' ? '↑' : '↓')}
+        </th>
+      </tr>
+    </thead>
+  );
 
-    selectAllRef.current.indeterminate =
-      selected.size > 0 && selected.size < files.length;
-  }, [selected, files]);
-
-  function formatBytes(bytes?: number) {
-    if (!bytes) return '—';
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
-  }
-
-  const SortIcon = ({ active }: { active: boolean }) =>
-  active ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : null;
-
-  // const CasesTableHeader = () => (
-  //   <thead>
-  //     <tr>
-  //       <th>
-  //         {/* <input
-  //           ref={selectAllRef}
-  //           type="checkbox"
-  //           checked={cases?.length > 0 && selected.size === cases?.length}
-  //           onChange={toggleSelectAll}
-  //         /> */}
-  //       </th>
-  //       {/* <th>Case Number</th> */}
-  //       <th onClick={() => handleSort('case_number')} style={{ cursor: 'pointer' }}>
-  //         Case Number <SortIcon active={sortKey === 'case_number'} />
-  //       </th>
-  //       {/* <th>Case Title</th> */}
-  //       <th onClick={() => handleSort('case_title')} style={{ cursor: 'pointer' }}>
-  //         Case Title <SortIcon active={sortKey === 'case_title'} />
-  //       </th>
-  //       {/* <th>Case Agent</th> */}
-  //       <th onClick={() => handleSort('case_agents')} style={{ cursor: 'pointer' }}>
-  //         Case Agent <SortIcon active={sortKey === 'case_agents'} />
-  //       </th>
-  //       <th>Jurisdiction</th>
-  //       {/* <th>Size</th> */}
-  //       <th onClick={() => handleSort('size')} style={{ cursor: 'pointer' }}>
-  //         Size <SortIcon active={sortKey === 'size'} />
-  //       </th>
-
-  //     </tr>
-  //   </thead>
-  // );
-  
   const SharedCasesTableHeader = () => (
-  <thead>
-    <tr>
-      <th></th>
-
-      <th onClick={() => handleSort('case_number')} style={{ cursor: 'pointer' }}>
-        Case Number <SortIcon active={sortKey === 'case_number'} />
-      </th>
-
-      <th onClick={() => handleSort('case_title')} style={{ cursor: 'pointer' }}>
-        Case Title <SortIcon active={sortKey === 'case_title'} />
-      </th>
-
-      <th>Shared By</th>
-
-      <th>Jurisdiction</th>
-
-      <th onClick={() => handleSort('size')} style={{ cursor: 'pointer' }}>
-        Size <SortIcon active={sortKey === 'size'} />
-      </th>
-
-      <th>Access</th>
-
-      {/* <th onClick={() => handleSort('shared_at')} style={{ cursor: 'pointer' }}> */}
-      <th  style={{ cursor: 'pointer' }}>
-        Shared On 
-        {/* <SortIcon active={sortKey === 'shared_at'} /> */}
-      </th>
-    </tr>
-  </thead>
-);
+    <thead>
+      <tr>
+        <th>
+          <input
+            ref={selectAllRef}
+            type="checkbox"
+            checked={cases.length > 0 && selected.size === cases.length}
+            onChange={toggleSelectAll}
+          />
+        </th>
+        <th>Case Number</th>
+        <th>Case Title</th>
+        <th>Owner</th>
+        <th>Jurisdiction</th>
+        <th>Size</th>
+        <th>Permission</th>
+        <th>Shared At</th>
+      </tr>
+    </thead>
+  );
 
   const FilesTableHeader = () => (
     <thead>
@@ -403,11 +519,32 @@ useEffect(() => {
             onChange={toggleSelectAll}
           />
         </th>
-        <th>Name</th>
-        
-      <th>Type</th>
-      <th>Size</th>
-      <th>Last Modified</th>
+        <th 
+          onClick={() => handleFileSort('name')}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          Name {fileSortKey === 'name' && (fileSortOrder === 'asc' ? '↑' : '↓')}
+        </th>
+        <th 
+          onClick={() => handleFileSort('evidence_number')}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          Evidence # {fileSortKey === 'evidence_number' && (fileSortOrder === 'asc' ? '↑' : '↓')}
+        </th>
+        <th 
+          onClick={() => handleFileSort('description')}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          Description {fileSortKey === 'description' && (fileSortOrder === 'asc' ? '↑' : '↓')}
+        </th>
+        <th>Type</th>
+        <th>Size</th>
+        <th 
+          onClick={() => handleFileSort('uploaded')}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          Uploaded {fileSortKey === 'uploaded' && (fileSortOrder === 'asc' ? '↑' : '↓')}
+        </th>
       </tr>
     </thead>
   );
@@ -459,7 +596,11 @@ useEffect(() => {
 
       <td>{item.owner_email}</td>
 
-      <td>{item.jurisdiction?.join(', ')}</td>
+      <td>
+        {Array.isArray(item.jurisdiction) 
+          ? item.jurisdiction.join(', ') 
+          : item.jurisdiction || '—'}
+      </td>
 
       <td>{formatBytes(item.size)}</td>
 
@@ -479,6 +620,9 @@ useEffect(() => {
   const renderFileRow = (item: any) => {
     const name = item.path.split('/').filter(Boolean).pop()!;
     const isFolder = item.path.endsWith('/');
+
+    // Get evidence metadata
+    const evidence = evidenceByKey.get(item.path) || evidenceByKey.get(name);
 
     return (
       <tr
@@ -501,10 +645,14 @@ useEffect(() => {
           />
         </td>
         <td>{isFolder ? '📁' : '📄'} {name}</td>
+        <td>{evidence?.evidence_number || '—'}</td>
+        <td>{evidence?.description || '—'}</td>
         <td>{isFolder ? 'Folder' : 'File'}</td>
         <td>{isFolder ? '—' : formatBytes(item.size)}</td>
         <td>
-          {item.lastModified
+          {evidence?.uploaded_at 
+            ? new Date(evidence.uploaded_at).toLocaleString()
+            : item.lastModified
             ? item.lastModified.toLocaleString()
             : '—'}
         </td>
@@ -527,10 +675,16 @@ useEffect(() => {
             <div className="search-select-wrapper">
               <select
                 className="search-select"
-                value={searchField}
-                onChange={e => setSearchField(e.target.value as SearchField)}
+                value={isRoot ? searchField : evidenceSearchField}
+                onChange={e => {
+                  if (isRoot) {
+                    setSearchField(e.target.value as SearchField);
+                  } else {
+                    setEvidenceSearchField(e.target.value as EvidenceSearchField);
+                  }
+                }}
               >
-                {SEARCH_FIELDS.map(f => (
+                {(isRoot ? SEARCH_FIELDS : EVIDENCE_SEARCH_FIELDS).map(f => (
                   <option key={f.key} value={f.key}>
                     {f.label}
                   </option>
@@ -544,11 +698,13 @@ useEffect(() => {
                 className="search-input"
                 type="text"
                 placeholder={`Search by ${
-                  SEARCH_FIELDS.find(f => f.key === searchField)?.label
+                  isRoot
+                    ? SEARCH_FIELDS.find(f => f.key === searchField)?.label
+                    : EVIDENCE_SEARCH_FIELDS.find(f => f.key === evidenceSearchField)?.label
                 }`}
                 value={searchValue}
                 onChange={e => setSearchValue(e.target.value)}
-                disabled={!cases?.length}
+                disabled={isRoot ? !cases?.length : !files?.length}
               />
 
               {searchValue && (
@@ -609,7 +765,14 @@ useEffect(() => {
           {isInsideCase && activeCase.canWrite && (
             <UploadButton
               prefix={`${baseKey}${pathStack.join('')}/`}
-              // onUploadComplete={loadFiles}
+              onUploaded={async () => {
+                // Refetch evidence metadata after upload
+                if (currentCaseNumber) {
+                  setTimeout(() => {
+                    refetchEvidence();
+                  }, 500);
+                }
+              }}
             />
           )}
         </Flex>
@@ -627,6 +790,13 @@ useEffect(() => {
         pathStack={pathStack}
         onNavigate={(x: string[]) => setPathStack(x)}
       />
+
+      {/* Show loading indicator for evidence metadata */}
+      {!isRoot && pathStack.length === 1 && (isEvidenceLoading || isEvidenceFetching) && (
+        <div style={{ padding: '1rem', textAlign: 'center', background: '#f0f0f0' }}>
+          Loading evidence metadata...
+        </div>
+      )}
 
       <table className="storage-table">
         {isRoot ? (
@@ -651,9 +821,11 @@ useEffect(() => {
           {/* {!loading && isRoot && receivedCases?.cases?.map(renderSharedCaseRow)} */}
           {isRoot && receivedCases?.cases?.map(renderSharedCaseRow)}
           {/* {!loading && !isRoot && files.map(renderFileRow)} */}
-          {!isRoot && files.map(renderFileRow)}
+          {!isRoot && sortedFiles.map(renderFileRow)}
         </tbody>
       </table>
     </>
   );
 };
+
+export default Received;
