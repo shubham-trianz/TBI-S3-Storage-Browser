@@ -1,93 +1,171 @@
 import '@aws-amplify/ui-react-storage/styles.css';
 import './App.css';
-
 import config from '../amplify_outputs.json';
 import { Amplify } from 'aws-amplify';
-import { Authenticator, Button } from '@aws-amplify/ui-react';
+import {
+  Authenticator,
+  useAuthenticator,
+} from '@aws-amplify/ui-react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
 import { UserContext } from './context/UserContext';
-import { Toaster } from "react-hot-toast";
-import logo from './assets/logo.png';
+import { Toaster } from 'react-hot-toast';
 import { MyStorageBrowser } from './components/MyStorageBrowser';
-import { useState, useRef, useEffect } from 'react';
+import { SecureSharePage } from './components/secureSharePage';
+import { useEffect } from 'react';
 
 Amplify.configure(config);
+import { ReactNode } from "react";
 
-function App() {
+/* -----------------------------------------
+   Auth Guard
+------------------------------------------ */
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { authStatus } = useAuthenticator((context) => [context.authStatus]);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (authStatus === 'unauthenticated') {
+      navigate('/login', {
+        state: {
+          from: location.pathname + location.search, // preserve full URL
+        },
+        replace: true,
+      });
+    }
+  }, [authStatus, navigate, location]);
+
+  if (authStatus !== 'authenticated') {
+    return null;
+  }
+
+  return children;
+}
+
+/* -----------------------------------------
+   Login Page
+------------------------------------------ */
+function LoginPage() {
+  const { authStatus } = useAuthenticator((context) => [context.authStatus]);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (authStatus === 'authenticated') {
+      // 🔥 FIX: This now properly preserves the query string
+      const from = (location.state as any)?.from || '/personal';
+
+      console.log('🔍 Redirecting after login to:', from); // Debug log
+
+      navigate(from, { replace: true });
+    }
+  }, [authStatus, navigate, location]);
+
   return (
-    <Authenticator>
-      {({ signOut, user }) => {
-        const email = user?.signInDetails?.loginId || user?.username || '';
-        const displayName = email.split('@')[0] || 'User';
-        const user_name = user?.username ?? '';
-
-        return (
-          <UserContext.Provider value={{ user_name, email }}>
-            <Header
-              displayName={displayName}
-              signOut={signOut}
-            />
-            <Toaster position="bottom-right" reverseOrder={false} />
-            <MyStorageBrowser />
-          </UserContext.Provider>
-        );
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        background: '#f5f5f5',
       }}
-    </Authenticator>
+    >
+      <Authenticator />
+    </div>
   );
 }
 
-function Header({
-  displayName,
-  signOut,
-}: {
-  displayName: string;
-  signOut?: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+/* -----------------------------------------
+   Authenticated App Area
+------------------------------------------ */
+function AuthenticatedApp() {
+  const { signOut, user } = useAuthenticator((context) => [context.user]);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const initial = displayName.charAt(0).toUpperCase();
+  const email =
+    user?.signInDetails?.loginId || user?.username || '';
+  const user_name = user?.username ?? '';
 
   return (
-    <div className="header">
-      <div className="header-left">
-        <img src={logo} alt="TBI Logo" height={100} />
-        <h1>Digital Evidence Management System</h1>
-      </div>
+    <UserContext.Provider value={{ user_name, email, signOut }}>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            borderRadius: "12px",
+            background: "#252222",
+            color: "#fff",
+            padding: "16px",
+          },
+        }}
+      />
 
-      <div className="avatar-wrapper" ref={ref}>
-        <div
-          className="avatar"
-          onClick={() => setOpen(v => !v)}
-        >
-          {initial}
-        </div>
+      <Routes>
+        {/* Prevent logged-in users from visiting login */}
+        <Route path="/login" element={<Navigate to="/personal" replace />} />
 
-        {open && (
-          <div className="avatar-dropdown">
-            <div className="avatar-name">{displayName}</div>
-            <div className="avatar-divider" />
-            <Button
-              size="small"
-              variation="link"
-              onClick={() => signOut?.()}
-              className="signout-btn"
-            >
-              Sign out
-            </Button>
-          </div>
-        )}
-      </div>
-    </div>
+        {/* Default route */}
+        <Route path="/" element={<Navigate to="/personal" replace />} />
+
+        {/* 🔓 Secure share route (NOT wrapped in RequireAuth) */}
+        <Route path="/secure-view" element={<SecureSharePage />} />
+
+        {/* Protected pages */}
+        <Route
+          path="/personal"
+          element={
+            <RequireAuth>
+              <MyStorageBrowser />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/shared"
+          element={
+            <RequireAuth>
+              <MyStorageBrowser />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/received"
+          element={
+            <RequireAuth>
+              <MyStorageBrowser />
+            </RequireAuth>
+          }
+        />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/personal" replace />} />
+      </Routes>
+    </UserContext.Provider>
+  );
+}
+
+/* -----------------------------------------
+   Root App
+------------------------------------------ */
+function App() {
+  return (
+    <BrowserRouter>
+      <Authenticator.Provider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="*" element={<AuthenticatedApp />} />
+        </Routes>
+      </Authenticator.Provider>
+    </BrowserRouter>
   );
 }
 

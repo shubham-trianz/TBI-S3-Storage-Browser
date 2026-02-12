@@ -1,4 +1,3 @@
-// UploadDialog.tsx
 import {
   Dialog,
   DialogTitle,
@@ -7,11 +6,16 @@ import {
   Button,
   TextField,
   Stack,
+  LinearProgress,
+  Typography,
+  IconButton,
+  Box,
 } from "@mui/material";
+import { Pause, PlayArrow } from "@mui/icons-material";
 import { useState, useRef } from "react";
-// import { fetchAuthSession } from "aws-amplify/auth";
-import { FileUploader } from '@aws-amplify/ui-react-storage';
 import { useUser } from "../../context/UserContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { useFileUploader } from "../../hooks/useMultipartUpload";
 
 type Props = {
   open: boolean;
@@ -24,126 +28,88 @@ export function UploadDialog({
   open,
   onClose,
   prefix,
+  onUploaded,
 }: Props) {
-  // const [file, setFile] = useState<File | null>(null);
-  // const [uploadedBy, setUploadedBy] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const { user_name } = useUser();
+  const queryClient = useQueryClient();
 
-  // const [meta, setMeta] = useState({
-  //   evidenceNumber: "",
-  //   description: "",
-  // });
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
   const evidenceNumberRef = useRef<HTMLInputElement | null>(null);
   const evidenceDescriptionRef = useRef<HTMLInputElement | null>(null);
 
+  const {
+    uploadMutation,
+    progress,
+    pause,
+    resume,
+    isPaused,
+    isNetworkError
+  } = useFileUploader();
 
-  /* 🔹 Load logged-in user */
-  // useEffect(() => {
-  //   async function loadUser() {
-  //     const session = await fetchAuthSession();
-  //     const username =
-  //       session.tokens?.idToken?.payload?.email ??
-  //       session.tokens?.idToken?.payload?.["cognito:username"] ??
-  //       "";
-  //     setUploadedBy(String(username));
-  //   }
-  //   loadUser();
-  // }, []);
+  const validateEvidenceNumber = (value: string) =>
+    /^\d{4}-\d{7}-E\d+$/.test(value);
 
-  const validateEvidenceNumber = (value: string) => {
-    return /^\d{4}-\d{7}-E\d+$/.test(value);
+  const handleUpload = async () => {
+    if (!file) return;
+
+    const evidenceNumber = evidenceNumberRef.current?.value || "";
+    const description = evidenceDescriptionRef.current?.value || "";
+
+    if (!validateEvidenceNumber(evidenceNumber)) {
+      setError("Evidence Number must be YYYY-XXXXXXX-EXXXXX");
+      return;
+    }
+
+    setError(null);
+
+    try {
+      const result = await uploadMutation.mutateAsync({
+        file,
+        key: `${prefix}${file.name}`,
+        metadata: {
+          evidenceNumber,
+          description,
+          user_name,
+          case_number: `${prefix}${file.name}`.split('/')[2]
+        },
+      });
+
+      if (result?.location) {
+        queryClient.invalidateQueries({ queryKey: ["cases"] });
+        onUploaded?.();
+        onClose();
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Upload failed");
+    }
   };
 
-  // const handleUpload = async () => {
-  //   if (!file) return;
-
-  //   if (!validateEvidenceNumber(meta.evidenceNumber)) {
-  //     setError(
-  //       "Evidence Number must be in format: YYYY-XXXXXXX-EXXXXX"
-  //     );
-  //     return;
-  //   }
-
-  //   try {
-  //     const fullPath = `${prefix}${file.name}`;
-
-  //     await uploadData({
-  //       path: fullPath,
-  //       data: file,
-  //       options: {
-  //         contentType: file.type,
-  //         metadata: {
-  //           evidenceNumber: meta.evidenceNumber,
-  //           description: meta.description,
-  //           uploadedBy,
-  //         },
-  //       },
-  //     }).result;
-
-  //     onUploaded?.();
-  //     onClose();
-  //   } catch (err) {
-  //     console.error("Upload failed", err);
-  //     setError("Upload failed");
-  //   }
-  // };
-
-  const processFile = ({ file }: { file: File }) => {
-
-    if (!file) {
-    throw new Error("No file provided");
-  }
-
-    const evidenceNumber = evidenceNumberRef.current?.value || '';
-    const description = evidenceDescriptionRef.current?.value || '';
-
-    console.log('evidenceNumber: ', evidenceNumber)
-    console.log('description: ', description)
-    if (!validateEvidenceNumber(evidenceNumber)) {
-      setError(
-        "Evidence Number must be in format: YYYY-XXXXXXX-EXXXXX"
-      );
-      throw new Error("Invalid evidence number");
+  const togglePause = () => {
+    if (isPaused) {
+      resume();
+    } else {
+      pause();
     }
-    const key = `${prefix}${file.name}`;
-    console.log('key: ', key)
-    return {
-      file,
-      key,
-      metadata: {
-        evidenceNumber: evidenceNumber,
-        description: description,
-        user_name: user_name,
-        case_number: key.split('/')[2]
-      },
-    };
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Upload Evidence</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 600 }}>
+        Upload Evidence
+      </DialogTitle>
 
       <DialogContent>
-        <Stack spacing={2} mt={1}>
-          
-          
-
-
+        <Stack spacing={3} mt={1}>
           <TextField
             required
             label="Kaseware Evidence Number"
             placeholder="2025-1234567-E00001"
-            // value={meta.evidenceNumber}
-            // onChange={(e) =>
-            //   setMeta({ ...meta, evidenceNumber: e.target.value })
-            // }
             inputRef={evidenceNumberRef}
-            // error={
-            //   !!meta.evidenceNumber &&
-            //   !validateEvidenceNumber(meta.evidenceNumber)
-            // }
             helperText="Format: YYYY-XXXXXXX-EXXXXX"
+            fullWidth
           />
 
           <TextField
@@ -151,31 +117,96 @@ export function UploadDialog({
             multiline
             rows={2}
             inputRef={evidenceDescriptionRef}
-            // value={meta.description}
-            // onChange={(e) =>
-            //   setMeta({ ...meta, description: e.target.value })
-            // }
+            fullWidth
           />
 
-          
-          <FileUploader
-            acceptedFileTypes={['image/*']}
-            path=''
-            maxFileCount={1}
-            isResumable
-            autoUpload={false}
-            processFile={processFile}
-          />
+          <Button
+            variant="outlined"
+            component="label"
+          >
+            Select File
+            <input
+              type="file"
+              hidden
+              onChange={(e) =>
+                setFile(e.target.files?.[0] || null)
+              }
+            />
+          </Button>
+
+          {file && (
+            <Typography variant="body2" color="text.secondary">
+              {file.name}
+            </Typography>
+          )}
+
+          {/* Modern Progress Section */}
+          {uploadMutation.isPending && (
+            <Box>
+              <LinearProgress
+                variant="determinate"
+                value={progress}
+                sx={{
+                  height: 8,
+                  borderRadius: 5,
+                }}
+              />
+
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+                mt={1}
+              >
+                <Typography variant="caption">
+                  {/* {isPaused ? "Paused" : `${progress}% uploaded`} */}
+                  {isNetworkError
+                    ? "Paused — Network disconnected"
+                    : isPaused
+                    ? "Paused"
+                    : `${progress}% uploaded`}
+                </Typography>
+
+                <IconButton
+                  size="small"
+                  disabled={isNetworkError && !navigator.onLine}
+                  onClick={togglePause}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  {isPaused ? (
+                    <PlayArrow fontSize="small" />
+                  ) : (
+                    <Pause fontSize="small" />
+                  )}
+                </IconButton>
+              </Stack>
+            </Box>
+          )}
 
           {error && (
-            <span style={{ color: "red" }}>{error}</span>
+            <Typography color="error">
+              {error}
+            </Typography>
           )}
         </Stack>
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-       
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose}>
+          Cancel
+        </Button>
+
+        <Button
+          variant="contained"
+          onClick={handleUpload}
+          disabled={!file || uploadMutation.isPending}
+          sx={{ borderRadius: 3 }}
+        >
+          Upload
+        </Button>
       </DialogActions>
     </Dialog>
   );

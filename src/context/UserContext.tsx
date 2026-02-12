@@ -3,6 +3,7 @@ import { createContext, useContext } from 'react';
 export interface UserContextType {
   user_name: string;
   email?: string;
+  signOut?: () => void
 }
 
 export const UserContext = createContext<UserContextType | null>(null);

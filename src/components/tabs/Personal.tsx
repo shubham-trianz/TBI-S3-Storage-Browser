@@ -4,7 +4,7 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 import {
   Flex,
   Heading,
-  Divider,
+  // Divider,
   Button,
 } from "@aws-amplify/ui-react";
 import { UploadButton } from "../utils/UploadButton";
@@ -12,16 +12,29 @@ import { DeleteObjects } from "../utils/DeleteObjects";
 import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
 import { generateAndCopyLink } from "../utils/generateLink";
+import Breadcrumbs from "../utils/Breadcrumbs"
+import { useCases, useShareCaseTo } from '../../hooks/cases';
+// import ShareDialog from '../utils/ShareDialog';
+// import { useCases } from '../../hooks/cases';
+import { useCaseEvidence } from '../../hooks/useCaseEvidence';
 
-type CaseItem = {
-  case_number: string;
-  case_title: string;
-  jurisdiction: string;
-  case_agents: string;
-  email: string;
-  user_name: string;
-  size?: number;
-};
+
+import ShareDialog from '../utils/ShareDialog';
+import { useUser } from '../../context/UserContext';
+import { useCognitoUser } from '../../hooks/users';
+// import { useQueryClient } from '@tanstack/react-query';
+ 
+// type CaseItem = {
+//   case_number: string;
+//   case_title: string;
+//   jurisdiction: string;
+//   case_agents: string;
+//   email: string;
+//   user_name: string;
+//   size?: number;
+// };
+
+
 
 export const Personal = () => {
   const [files, setFiles] = useState<any[]>([]);
@@ -29,9 +42,23 @@ export const Personal = () => {
   const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [cases, setCases] = useState<CaseItem[]>([]);
+
+  const { user_name } = useUser()
+
+  // const [cases, setCases] = useState<CaseItem[]>([]);
   // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const currentPath = pathStack.join('');
+  console.log('currentPath: ', currentPath)
+  const currentCaseNumber =
+  pathStack.length > 0 ? pathStack[0].replace('/', '') : null;
+
+ const {
+  data: evidenceData,
+  isLoading: isEvidenceLoading,
+  isFetching: isEvidenceFetching, // This shows when refetching
+  refetch: refetchEvidence,
+} = useCaseEvidence(currentCaseNumber ?? '');
+
   const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const isRoot = pathStack.length === 0;
@@ -39,15 +66,47 @@ export const Personal = () => {
   const selectedFolders = [...selected].filter(p => p.endsWith("/"));
   const selectAllRef = useRef<HTMLInputElement>(null);
   const [searchField, setSearchField] = useState<SearchField>('case_number');
+  const [evidenceSearchField, setEvidenceSearchField] = useState<EvidenceSearchField>('name');
   const [searchValue, setSearchValue] = useState('');
+  const { data: cases, isLoading } = useCases();
+  const { mutate: shareCaseTo } = useShareCaseTo();
 
+  
+  console.log('casessss: ', cases)
+  const { data: cognitoUsers,  } = useCognitoUser()
+  console.log('cognitoUsers: ', cognitoUsers)
+  
+  // const [selectedEvidence, setSelectedEvidence] = useState<string[]>([]);
+  console.log('cases: ', cases)
+  console.log('evidenceData: ', evidenceData)
+  const evidenceByKey = useMemo(() => {
+  const map = new Map<string, any>();
+  evidenceData?.items?.forEach(ev => {
+    // Try both full s3_key and just the filename
+    map.set(ev.s3_key, ev);
+    
+    // Also try mapping by the filename only
+    const filename = ev.s3_key?.split('/').pop();
+    if (filename) {
+      map.set(filename, ev);
+    }
+  });
+  return map;
+}, [evidenceData]);
 
   type SearchField = 'case_number' | 'case_title' | 'case_agents';
+  type EvidenceSearchField = 'name' | 'evidence_number' | 'description';
 
   const SEARCH_FIELDS: { key: SearchField; label: string }[] = [
     { key: 'case_number', label: 'Case Number' },
     { key: 'case_title', label: 'Case Title' },
     { key: 'case_agents', label: 'Case Agent' }
+  ];
+
+  const EVIDENCE_SEARCH_FIELDS: { key: EvidenceSearchField; label: string }[] = [
+    { key: 'name', label: 'File Name' },
+    { key: 'evidence_number', label: 'Evidence Number' },
+    { key: 'description', label: 'Description' }
   ];
 
   type SortKey = 'case_number' | 'case_title' | 'case_agents' | 'size';
@@ -56,24 +115,13 @@ export const Personal = () => {
   const [sortKey, setSortKey] = useState<SortKey>('case_number');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
-  // const filteredCases = useMemo(() => {
-  //   if (!searchTerm.trim()) return cases;
-
-  //   const q = searchTerm.toLowerCase();
-
-  //   return cases.filter(item =>
-  //     item.case_number.toLowerCase().includes(q) ||
-  //     item.case_title.toLowerCase().includes(q) ||
-  //     item.case_agents.toLowerCase().includes(q)
-  //   );
-  // }, [cases, searchTerm]);
-
   const filteredCases = useMemo(() => {
+    if (!cases || !Array.isArray(cases)) return [];
     if (!searchValue.trim()) return cases;
 
     const q = searchValue.toLowerCase();
 
-    return cases.filter(item =>
+    return cases?.filter(item =>
       String(item[searchField] ?? '')
         .toLowerCase()
         .includes(q)
@@ -83,10 +131,7 @@ export const Personal = () => {
 
   const sortedCases = useMemo(() => {
   const sorted = [...filteredCases].sort((a, b) => {
-    // const aVal = a[sortKey];
-    // const bVal = b[sortKey];
-
-    // numeric sort (size)
+    
     if (sortKey === 'size') {
       const aSize = typeof a.size === 'number' ? a.size : 0;
       const bSize = typeof b.size === 'number' ? b.size : 0;
@@ -115,11 +160,111 @@ const handleSort = (key: SortKey) => {
   }
 };
 
+// File sorting and filtering
+type FileSortKey = 'name' | 'evidence_number' | 'description' | 'uploaded';
+const [fileSortKey, setFileSortKey] = useState<FileSortKey>('name');
+const [fileSortOrder, setFileSortOrder] = useState<SortOrder>('asc');
+
+const filteredFiles = useMemo(() => {
+  if (!searchValue.trim() || isRoot) return files;
+
+  const q = searchValue.toLowerCase();
+
+  return files.filter(item => {
+    const name = item.path.split('/').filter(Boolean).pop() || '';
+    const evidence = evidenceByKey.get(item.path) || evidenceByKey.get(name);
+
+    switch (evidenceSearchField) {
+      case 'name':
+        return name.toLowerCase().includes(q);
+      
+      case 'evidence_number':
+        return evidence?.evidence_number?.toLowerCase().includes(q) || false;
+      
+      case 'description':
+        return evidence?.description?.toLowerCase().includes(q) || false;
+      
+      default:
+        return false;
+    }
+  });
+}, [files, searchValue, evidenceSearchField, evidenceByKey, isRoot]);
+
+const sortedFiles = useMemo(() => {
+  const sorted = [...filteredFiles].sort((a, b) => {
+    const aName = a.path.split('/').filter(Boolean).pop() || '';
+    const bName = b.path.split('/').filter(Boolean).pop() || '';
+    
+    // Folders always come first
+    const aIsFolder = a.path.endsWith('/');
+    const bIsFolder = b.path.endsWith('/');
+    if (aIsFolder !== bIsFolder) {
+      return aIsFolder ? -1 : 1;
+    }
+
+    // Get evidence data for sorting
+    const aEvidence = evidenceByKey.get(a.path) || evidenceByKey.get(aName);
+    const bEvidence = evidenceByKey.get(b.path) || evidenceByKey.get(bName);
+
+    let result = 0;
+
+    switch (fileSortKey) {
+      case 'name':{
+        result = aName.localeCompare(bName, undefined, { 
+          sensitivity: 'base',
+          numeric: true 
+        });
+        break;
+      }
+      
+      case 'evidence_number': {
+        const aEvidenceNum = aEvidence?.evidence_number || '';
+        const bEvidenceNum = bEvidence?.evidence_number || '';
+        result = aEvidenceNum.localeCompare(bEvidenceNum, undefined, {
+          sensitivity: 'base',
+          numeric: true
+        });
+        break;
+      }
+      
+      case 'description': {
+        const aDesc = aEvidence?.description || '';
+        const bDesc = bEvidence?.description || '';
+        result = aDesc.localeCompare(bDesc, undefined, { sensitivity: 'base' });
+        break;
+      }
+      
+      case 'uploaded': {
+        const aTime = aEvidence?.uploaded_at 
+          ? new Date(aEvidence.uploaded_at).getTime()
+          : a.lastModified?.getTime() || 0;
+        const bTime = bEvidence?.uploaded_at
+          ? new Date(bEvidence.uploaded_at).getTime()
+          : b.lastModified?.getTime() || 0;
+        result = aTime - bTime;
+        break;
+      }
+    }
+
+    return fileSortOrder === 'asc' ? result : -result;
+  });
+
+  return sorted;
+}, [filteredFiles, fileSortKey, fileSortOrder, evidenceByKey]);
+
+const handleFileSort = (key: FileSortKey) => {
+  if (fileSortKey === key) {
+    setFileSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+  } else {
+    setFileSortKey(key);
+    setFileSortOrder('asc');
+  }
+};
+
 useEffect(() => {
   setSearchValue('');
-}, [searchField]);
-  // const selectedFilePath =
-  //   selected.size === 1 ? [...selected][0] : null;
+}, [searchField, evidenceSearchField, isRoot]);
+  
   const rootFolderPrefix = identityId
   ? `private/${identityId}/`
   : null;
@@ -141,66 +286,67 @@ useEffect(() => {
   //   }
   //   return files.some(f => f.path.toLowerCase() === `${currentPath}${folderName}/`.toLowerCase());
   // };
-  const createCase = useCallback(async (payload: any) => {
-  const session = await fetchAuthSession();
-  const token = session.tokens?.idToken?.toString();
+//   const createCase = useCallback(async (payload: any) => {
+//   const session = await fetchAuthSession();
+//   const token = session.tokens?.idToken?.toString();
 
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+//   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
-  const res = await fetch(`${apiBaseUrl}/cases`, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+//   const res = await fetch(`${apiBaseUrl}/cases`, {
+//     method: "PUT",
+//     headers: {
+//       Authorization: `Bearer ${token}`,
+//       "Content-Type": "application/json",
+//     },
+//     body: JSON.stringify(payload),
+//   });
 
-  if (!res.ok) {
-    throw new Error(`Request failed: ${res.status}`);
-  }
+//   if (!res.ok) {
+//     throw new Error(`Request failed: ${res.status}`);
+//   }
 
-  return await res.json();
-}, []);
+//   return await res.json();
+// }, []);
 
   // const isSingleFileSelected =
   //   !!selectedFilePath && !selectedFilePath.endsWith("/");
 
-  const loadCases = useCallback(async () => {
-    try {
-      const session = await fetchAuthSession();
-      const token = session.tokens?.idToken?.toString();
+  // const loadCases = useCallback(async () => {
+  //   try {
+  //     const session = await fetchAuthSession();
+  //     const token = session.tokens?.idToken?.toString();
 
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-      console.log('apiBaseUrl: ', apiBaseUrl)
-      const res = await fetch(
-        `${apiBaseUrl}/cases`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          // body: JSON.stringify(caseData)
-        },
-      );
-      if (!res.ok) {
-        throw new Error(`Request failed: ${res.status}`);
-      }
+  //     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+  //     console.log('apiBaseUrl: ', apiBaseUrl)
+  //     const res = await fetch(
+  //       `${apiBaseUrl}/cases`,
+  //       {
+  //         method: "GET",
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //           "Content-Type": "application/json"
+  //         },
+  //         // body: JSON.stringify(caseData)
+  //       },
+  //     );
+  //     if (!res.ok) {
+  //       throw new Error(`Request failed: ${res.status}`);
+  //     }
     
-      const response = await res.json();
-      console.log('response: ', response)
-      setCases(response)
-      return response;
-    } catch (err) {
-      console.error('Error loading cases:', err);
-      return [];
-    }
-  }, [])
+  //     const response = await res.json();
+  //     console.log('response: ', response)
+  //     setCases(response)
+  //     return response;
+  //   } catch (err) {
+  //     console.error('Error loading cases:', err);
+  //     return [];
+  //   }
+  // }, [])
+  
 
-  useEffect(() => {
-    loadCases()
-  }, [loadCases])
+  // useEffect(() => {
+  //   loadCases()
+  // }, [loadCases])
 
   /* ------------------ AUTH INIT ------------------ */
   useEffect(() => {
@@ -218,9 +364,11 @@ useEffect(() => {
     const map = new Map<string, any>();
 
     for (const item of items) {
+      console.log('item: ', item)
       const relative = item.path.replace(basePath, '');
+      console.log('relative: ', relative)
       const parts = relative.split('/').filter(Boolean);
-
+      console.log('parts: ', parts)
       if (parts.length === 1 && !item.path.endsWith('/')) {
         map.set(item.path, item);
         continue;
@@ -236,7 +384,7 @@ useEffect(() => {
         }
       }
     }
-
+    console.log('map: ', map)
     return Array.from(map.values());
   }
   const loadFiles = useCallback(async () => {
@@ -299,12 +447,12 @@ useEffect(() => {
     <thead>
       <tr>
         <th>
-          <input
+          {/* <input
             ref={selectAllRef}
             type="checkbox"
-            checked={cases.length > 0 && selected.size === cases.length}
+            checked={cases?.length > 0 && selected.size === cases?.length}
             onChange={toggleSelectAll}
-          />
+          /> */}
         </th>
         {/* <th>Case Number</th> */}
         <th onClick={() => handleSort('case_number')} style={{ cursor: 'pointer' }}>
@@ -330,24 +478,45 @@ useEffect(() => {
   
 
   const FilesTableHeader = () => (
-    <thead>
-      <tr>
-        <th>
-          <input
-            ref={selectAllRef}
-            type="checkbox"
-            checked={files.length > 0 && selected.size === files.length}
-            onChange={toggleSelectAll}
-          />
-        </th>
-        <th>Name</th>
-        
-      <th>Type</th>
-      <th>Size</th>
-      <th>Last Modified</th>
-      </tr>
-    </thead>
-  );
+  <thead>
+    <tr>
+      <th>
+        <input
+          ref={selectAllRef}
+          type="checkbox"
+          checked={files.length > 0 && selected.size === files.length}
+          onChange={toggleSelectAll}
+        />
+      </th>
+      <th 
+        onClick={() => handleFileSort('name')} 
+        style={{ cursor: 'pointer' }}
+      >
+        Name {fileSortKey === 'name' && (fileSortOrder === 'asc' ? ' ▲' : ' ▼')}
+      </th>
+      <th 
+        onClick={() => handleFileSort('evidence_number')} 
+        style={{ cursor: 'pointer' }}
+      >
+        Evidence # {fileSortKey === 'evidence_number' && (fileSortOrder === 'asc' ? ' ▲' : ' ▼')}
+      </th>
+      <th 
+        onClick={() => handleFileSort('description')} 
+        style={{ cursor: 'pointer' }}
+      >
+        Description {fileSortKey === 'description' && (fileSortOrder === 'asc' ? ' ▲' : ' ▼')}
+      </th>
+      <th 
+        onClick={() => handleFileSort('uploaded')} 
+        style={{ cursor: 'pointer' }}
+      >
+        Uploaded / Last Modified {fileSortKey === 'uploaded' && (fileSortOrder === 'asc' ? ' ▲' : ' ▼')}
+      </th>
+    </tr>
+  </thead>
+);
+
+
 
   const renderCaseRow = (item: any) => {
     const name = item.case_number;
@@ -373,239 +542,73 @@ useEffect(() => {
         <td>📁 {name}</td>
         <td>{item.case_title}</td>
         <td>{item.case_agents}</td>
-        <td>{JSON.parse(item.jurisdiction).join(', ')}</td>
+        <td>
+          {Array.isArray(item.jurisdiction) 
+            ? item.jurisdiction.join(', ') 
+            : item.jurisdiction || '—'}
+        </td>
         <td>{formatBytes(item.size)}</td>
       </tr>
     );
   };
 
   const renderFileRow = (item: any) => {
-    const name = item.path.split('/').filter(Boolean).pop()!;
-    const isFolder = item.path.endsWith('/');
+  const name = item.path.split('/').filter(Boolean).pop()!;
+  const isFolder = item.path.endsWith('/');
+  
+  // Try to match evidence by full path first, then by filename
+  let evidence = evidenceByKey.get(item.path);
+  if (!evidence) {
+    evidence = evidenceByKey.get(name);
+  }
 
-    return (
-      <tr
-        key={item.path}
-        className={isFolder ? 'folder' : ''}
-        style={{ cursor: isFolder ? 'pointer' : 'default' }}
-        onClick={() =>
-          isFolder &&
-          setPathStack(prev => [...prev, `${name}/`])
-        }
-      >
-        <td>
-          <input
-            type="checkbox"
-            checked={selected.has(item.path)}
-            onClick={e => e.stopPropagation()}
-            onChange={() => toggleSelect(item.path)}
-          />
-        </td>
-        <td>{isFolder ? '📁' : '📄'} {name}</td>
-        <td>{isFolder ? 'Folder' : 'File'}</td>
-        <td>{isFolder ? '—' : formatBytes(item.size)}</td>
-        <td>
-          {item.lastModified
+  return (
+    <tr
+      key={item.path}
+      className={isFolder ? 'folder' : ''}
+      style={{ cursor: isFolder ? 'pointer' : 'default' }}
+      onClick={() =>
+        isFolder &&
+        setPathStack(prev => [...prev, `${name}/`])
+      }
+    >
+      <td>
+        <input
+          type="checkbox"
+          checked={selected.has(item.path)}
+          onClick={e => e.stopPropagation()}
+          onChange={() => toggleSelect(item.path)}
+        />
+      </td>
+
+      <td>{isFolder ? '📁' : '📄'} {name}</td>
+
+      <td>
+        {evidence ? evidence.evidence_number : '—'}
+      </td>
+
+      <td>
+        {evidence ? evidence.description : '—'}
+      </td>
+
+      <td>
+        {evidence?.uploaded_at
+          ? new Date(evidence.uploaded_at).toLocaleString()
+          : item.lastModified
             ? item.lastModified.toLocaleString()
             : '—'}
-        </td>
-      </tr>
-    );
+      </td>
+    </tr>
+  );
+};
+
+  const [open, setOpen] = useState(false)
+  const users = cognitoUsers
+
+  const extractCaseNumber = (path: string) => {
+    const parts = path.split("/");
+    return parts[parts.length - 2]; // "2026-0000003"
   };
-
-  
-
-
-  /* ...existing code... */
-  // return (
-  //   <>
-  //     <Flex
-  //       justifyContent="space-between"
-  //       alignItems="center"
-  //       padding="0.75rem 0"
-  //     >
-  //       {/* Add this right after your opening Flex */}
-  //       {!isRoot && (
-  //         <Flex gap="0.5rem" alignItems="center" padding="0.5rem 0">
-  //           <Button
-  //             size="small"
-  //             variation="link"
-  //             onClick={() => setPathStack([])}
-  //           >
-  //             Home
-  //           </Button>
-  //           {pathStack.map((segment, idx) => (
-  //             <Flex key={idx} gap="0.5rem" alignItems="center">
-  //               <span>/</span>
-  //               <Button
-  //                 size="small"
-  //                 variation="link"
-  //                 onClick={() => setPathStack(pathStack.slice(0, idx + 1))}
-  //               >
-  //                 {segment.replace('/', '')}
-  //               </Button>
-  //             </Flex>
-  //           ))}
-  //         </Flex>
-  //       )}
-  //       <Heading level={5}>Files</Heading>
-
-  //       <Flex gap="0.5rem">
-  //         <Button
-  //           size="small"
-  //           onClick={loadFiles}
-  //           isLoading={loading}
-  //         >
-  //           Refresh
-  //         </Button>
-
-  //         <Button
-  //           size="small"
-  //           variation="primary"
-  //           isLoading={isGeneratingLink}
-  //           loadingText="Generating link..."
-  //           disabled={isGeneratingLink || !canGenerateLink}
-  //           onClick={async () => {
-  //             try {
-  //               setIsGeneratingLink(true);
-
-  //               // CASE 1: One or more files selected → ZIP only those files
-  //               if (selectedFiles.length > 0) {
-  //                 await generateAndCopyLink({
-  //                   objectKeys: selectedFiles,
-  //                 });
-  //                 return;
-  //               }
-
-  //               // CASE 2: Folder selected → ZIP that folder
-  //               if (selectedFolders.length === 1) {
-  //                 await generateAndCopyLink({
-  //                   folderPrefix: selectedFolders[0],
-  //                 });
-  //                 return;
-  //               }
-
-  //               // CASE 3: Inside folder, nothing selected → ZIP current folder
-  //               if (!isRoot && currentFolderPrefix) {
-  //                 await generateAndCopyLink({
-  //                   folderPrefix: currentFolderPrefix,
-  //                 });
-  //               }
-  //             } catch (err) {
-  //               console.error(err);
-  //             } finally {
-  //               setIsGeneratingLink(false);
-  //             }
-  //           }}
-  //         >
-  //           Generate link
-  //         </Button>
-
-
-
-  //         {isRoot ? (
-  //           <CreateCase
-  //             basePath={`private/${identityId}/${currentPath}`}
-  //             onCreated={async (payload: any) => {
-  //               const created = await createCase(payload);
-  //               const createdCase = JSON.parse(created['item'])
-  //               setCases((prev) => [...prev, createdCase])
-  //             }}
-  //             disabled={loading || !identityId}
-  //           />
-  //         ) : (
-  //           <CreateFolder
-  //             basePath={`private/${identityId}/${currentPath}`}
-  //             onCreated={() => {
-  //               loadFiles();
-  //             }}
-  //             disabled={loading || !identityId}
-  //           />
-  //         )}
-
-  //         <DeleteObjects
-  //           selectedPaths={[...selected]}
-  //           onDeleted={loadFiles}
-  //         />
-
-  //         {identityId && !isRoot && (
-  //           <UploadButton
-  //             prefix={`private/${identityId}/${currentPath}`}
-  //           />
-  //         )}
-  //       </Flex>
-  //     </Flex>
-
-  //     <Divider />
-
-  //     <table className="storage-table">
-  //       <thead>
-  //         <tr>
-  //           <th>
-  //             <input
-  //               ref={selectAllRef}
-  //               type="checkbox"
-  //               checked={files.length > 0 && selected.size === files.length}
-  //               onChange={toggleSelectAll}
-  //             />
-  //           </th>
-  //           <th>Name</th>
-  //           <th>Type</th>
-  //           <th>Size</th>
-  //           <th>Last Modified</th>
-  //         </tr>
-  //       </thead>
-
-  //       <tbody>
-  //         {loading && (
-  //           <tr>
-  //             <td colSpan={5}>Loading…</td>
-  //           </tr>
-  //         )}
-
-  //         {!loading && files.length === 0 && (
-  //           <tr>
-  //             <td colSpan={5}>Empty folder</td>
-  //           </tr>
-  //         )}
-
-  //         {!loading && files.map(item => {
-  //           const name = item.path.split('/').filter(Boolean).pop();
-  //           const isFolder = item.path.endsWith('/');
-
-  //           return (
-  //             <tr
-  //               key={item.path}
-  //               className={isFolder ? 'folder' : ''}
-  //               style={{ cursor: isFolder ? 'pointer' : 'default' }}
-  //               onClick={() =>
-  //                 isFolder &&
-  //                 setPathStack(prev => [...prev, `${name}/`])
-  //               }
-  //             >
-  //               <td>
-  //                 <input
-  //                   type="checkbox"
-  //                   checked={selected.has(item.path)}
-  //                   onClick={e => e.stopPropagation()}
-  //                   onChange={() => toggleSelect(item.path)}
-  //                 />
-  //               </td>
-  //               <td>{isFolder ? '📁' : '📄'} {name}</td>
-  //               <td>{isFolder ? 'Folder' : 'File'}</td>
-  //               <td>{isFolder ? '—' : formatBytes(item.size)}</td>
-  //               <td>
-  //                 {item.lastModified
-  //                   ? item.lastModified.toLocaleString()
-  //                   : '—'}
-  //               </td>
-  //             </tr>
-  //           );
-  //         })}
-  //       </tbody>
-  //     </table>
-  //   </>
-  // );
 
   return (
     <>
@@ -649,22 +652,34 @@ useEffect(() => {
         <Heading level={5}>Files</Heading>
 
         <Flex gap="0.5rem">
-          
-          
 
           <div className="search-bar">
             <div className="search-select-wrapper">
-              <select
-                className="search-select"
-                value={searchField}
-                onChange={e => setSearchField(e.target.value as SearchField)}
-              >
-                {SEARCH_FIELDS.map(f => (
-                  <option key={f.key} value={f.key}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
+              {isRoot ? (
+                <select
+                  className="search-select"
+                  value={searchField}
+                  onChange={e => setSearchField(e.target.value as SearchField)}
+                >
+                  {SEARCH_FIELDS.map(f => (
+                    <option key={f.key} value={f.key}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  className="search-select"
+                  value={evidenceSearchField}
+                  onChange={e => setEvidenceSearchField(e.target.value as EvidenceSearchField)}
+                >
+                  {EVIDENCE_SEARCH_FIELDS.map(f => (
+                    <option key={f.key} value={f.key}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              )}
               <span className="select-arrow">▼</span>
             </div>
 
@@ -673,11 +688,13 @@ useEffect(() => {
                 className="search-input"
                 type="text"
                 placeholder={`Search by ${
-                  SEARCH_FIELDS.find(f => f.key === searchField)?.label
+                  isRoot
+                    ? SEARCH_FIELDS.find(f => f.key === searchField)?.label
+                    : EVIDENCE_SEARCH_FIELDS.find(f => f.key === evidenceSearchField)?.label
                 }`}
                 value={searchValue}
                 onChange={e => setSearchValue(e.target.value)}
-                disabled={!cases.length}
+                disabled={isRoot ? !cases?.length : !files?.length}
               />
 
               {searchValue && (
@@ -692,6 +709,83 @@ useEffect(() => {
             </div>
           </div>
 
+          {isRoot && (
+            <Button size='small' onClick={() => setOpen(true)}>
+              Share
+            </Button>
+          )}
+          {open && (
+            <ShareDialog
+              open={open}
+              users={users}
+              selectedFiles={selected}
+              sharedTo={
+                selected.size === 1
+                  ? cases?.find(
+                      c => c.case_number === extractCaseNumber([...selected][0])
+                    )?.shared_to
+                  : []
+              }
+              onClose={() => setOpen(false)}
+              onShare={async (selected) => {
+              const now = new Date().toISOString();
+              const items = [];
+
+              const selectedUsers = selected.users;
+              const selectedFiles = selected.files;
+              console.log('selectedUsers: ', selectedUsers)
+              for (const file of selectedFiles) {
+                const caseNumber = extractCaseNumber(file);
+
+                // 🔑 get metadata from your case list
+                const caseMeta = cases?.find(
+                  c => c.case_number === caseNumber
+                );
+
+                if (!caseMeta) continue; // safety
+
+                for (const user of selectedUsers) {
+                  items.push({
+                    receiver_user_id: `RECEIVER#${user.user_name}`,
+                    case_number: `CASE#${caseNumber}`,
+
+                    // GSI for owner-side queries
+                    gsi1pk: `OWNER#${user_name}`,
+                    gsi1sk: `CASE#${caseNumber}#RECEIVER#${user.user_name}`,
+
+                    // Identifiers
+                    receiver_user: user.user_name,
+                    receiver_email: user.email,
+                    owner_user: user_name,
+                    
+                    // case_number: caseNumber,
+
+                    // 📦 copied metadata
+                    case_title: caseMeta.case_title,
+                    jurisdiction: caseMeta.jurisdiction,
+                    case_agents: caseMeta.case_agents,
+                    size: caseMeta.size ?? 0,
+                    source_key: caseMeta.source_key,
+                    owner_email: caseMeta.email,
+
+                    // Permissions
+                    permissions: {
+                      read: user.read,
+                      write: user.write
+                    },
+
+                    shared_at: now
+                  });
+                }
+              }
+
+              console.log('Shared case items:', items);
+              await shareCaseTo(items);
+              // queryClient.invalidateQueries({ queryKey: ['cases'] })
+            }}
+
+            />
+          )}
 
           {/* <input
             type="text"
@@ -725,6 +819,12 @@ useEffect(() => {
                   });
                   return;
                 }
+                // if (selectedEvidence.length > 0) {
+                //   await generateAndCopyLink({
+                //     objectKeys: selectedEvidence,
+                //   });
+                //   return;
+                // }
 
                 // CASE 2: Folder selected → ZIP that folder
                 if (selectedFolders.length === 1) {
@@ -754,13 +854,6 @@ useEffect(() => {
           {isRoot ? (
             <CreateCase
               basePath={`private/${identityId}/${currentPath}`}
-              onCreated={async (payload: any) => {
-                const created = await createCase(payload);
-                const createdCase = JSON.parse(created['item'])
-                createdCase.size = 16
-                setCases((prev) => [...prev, createdCase])
-              }}
-              disabled={loading || !identityId}
             />
             )
             :(
@@ -782,71 +875,63 @@ useEffect(() => {
           />
 
           {identityId && !isRoot && (
-            <UploadButton
-              prefix={`private/${identityId}/${currentPath}`}
-              // onUploadComplete={loadFiles}
-            />
-          )}
+          <UploadButton
+            prefix={`private/${identityId}/${currentPath}`}
+            onUploaded={async () => {
+              await loadFiles();
+              if (currentCaseNumber) {
+                setTimeout(() => {
+                  refetchEvidence();
+                },);
+              }
+            }}
+          />
+        )}
         </Flex>
       </Flex>
+      <Breadcrumbs 
+        pathStack={pathStack}
+        onNavigate={(x: string[]) => setPathStack(x)}
+        onExitCase={() => {
+        setPathStack([]);
+      }}
+      />
+        {/* ================= ROOT = CASE LIST ================= */}
+        {isRoot && (
+          <table className="storage-table">
+          {isRoot ? <CasesTableHeader /> : <FilesTableHeader />}
 
-      <Divider />
-
-      <div className="breadcrumb">
-        <span
-          className="breadcrumb-link"
-          onClick={() => setPathStack([])}
-        >
-          Home
-        </span>
-
-        {pathStack.map((segment, index) => {
-          const name = segment.replace('/', '');
-          const isLast = index === pathStack.length - 1;
-
-          return (
-            <span key={index}>
-              {' / '}
-              <span
-                className={!isLast ? 'breadcrumb-link' : ''}
-                style={isLast ? { color: '#555' } : undefined}
-                onClick={
-                  !isLast
-                    ? () => setPathStack(pathStack.slice(0, index + 1))
-                    : undefined
-                }
-              >
-                {name}
-              </span>
-            </span>
-          );
-        })}
-      </div>
-
-      <table className="storage-table">
-        {isRoot ? (
-          <CasesTableHeader />
-        ) : (
-          <FilesTableHeader />
+            <tbody>
+              {!isLoading && sortedCases.map(renderCaseRow)}
+            </tbody>
+          </table>
         )}
 
-        <tbody>
-          {loading && (
-            <tr className="loading-row">
-              <td colSpan={5}>Loading…</td>
-            </tr>
-          )}
-
-          {!loading && files.length === 0 && (
-            <tr className="loading-row">
-              <td colSpan={5}>Empty folder</td>
-            </tr>
-          )}
-
-          {!loading && isRoot && sortedCases.map(renderCaseRow)}
-          {!loading && !isRoot && files.map(renderFileRow)}
-        </tbody>
-      </table>
+        {/* ================= CASE = EVIDENCE + FILES ================= */}
+        {!isRoot && pathStack.length === 1 && (
+          <>
+            {(isEvidenceLoading || isEvidenceFetching) && (
+              <div style={{ padding: '1rem', textAlign: 'center', background: '#f0f0f0' }}>
+                Loading evidence metadata...
+              </div>
+            )}
+            <table className="storage-table">
+              <FilesTableHeader />
+              <tbody>
+                {!loading && sortedFiles.map(renderFileRow)}
+              </tbody>
+            </table>
+          </>
+        )}
+        {/* ================= SUBFOLDER = FILES ONLY ================= */}
+        {!isRoot && pathStack.length > 1 && (
+          <table className="storage-table">
+            <FilesTableHeader />
+            <tbody>
+              {!loading && sortedFiles.map(renderFileRow)}
+            </tbody>
+          </table>
+        )}
     </>
   );
 };
