@@ -533,7 +533,7 @@ useEffect(() => {
           onClick={() => handleFileSort('evidence_number')}
           style={{ cursor: 'pointer', userSelect: 'none' }}
         >
-          Evidence # {fileSortKey === 'evidence_number' && (fileSortOrder === 'asc' ? '↑' : '↓')}
+          Evidence {fileSortKey === 'evidence_number' && (fileSortOrder === 'asc' ? '↑' : '↓')}
         </th>
         <th 
           onClick={() => handleFileSort('description')}
