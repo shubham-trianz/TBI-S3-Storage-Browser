@@ -79,8 +79,16 @@ export const Received = () => {
   console.log('evidenceByKey: ', evidenceByKey);
 
   // const currentPrefix = pathStack[pathStack.length - 1];
-  const currentPrefix = baseKey
-  ? `${baseKey}${pathStack.length ? pathStack.join('/') + '/' : ''}`
+  const normalizedBaseKey = baseKey
+  ? baseKey.endsWith('/')
+    ? baseKey
+    : `${baseKey}/`
+  : null;
+  // const currentPrefix = baseKey
+  // ? `${baseKey}${pathStack.length ? pathStack.join('/') + '/' : ''}`
+  // : null;
+  const currentPrefix = normalizedBaseKey
+  ? `${normalizedBaseKey}${pathStack.length ? pathStack.join('/') + '/' : ''}`
   : null;
   console.log('currentPrefix: ', currentPrefix)
   console.log('pathStack: ', pathStack)
