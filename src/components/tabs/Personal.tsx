@@ -851,13 +851,6 @@ useEffect(() => {
           {isRoot ? (
             <CreateCase
               basePath={`private/${identityId}/${currentPath}`}
-              // onCreated={async (payload: any) => {
-              //   // const created = await createCase(payload);
-              //   // const createdCase = JSON.parse(created['item'])
-              //   // createdCase.size = 16
-              //   // setCases((prev) => [...prev, createdCase])
-              // }}
-              disabled={loading || !identityId}
             />
             )
             :(

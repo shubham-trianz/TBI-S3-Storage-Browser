@@ -18,7 +18,18 @@ function App() {
 
         return (
           <UserContext.Provider value={{ user_name, email, signOut }}>
-            <Toaster position="bottom-right" reverseOrder={false} />
+             <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    borderRadius: "12px",
+                    background: "#252222",
+                    color: "#fff",
+                    padding: "16px",
+                  },
+                }}
+              />
             <MyStorageBrowser />
           </UserContext.Provider>
         );
