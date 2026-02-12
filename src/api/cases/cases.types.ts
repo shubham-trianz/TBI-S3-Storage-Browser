@@ -5,10 +5,20 @@ export interface Case {
     case_title: string,
     case_agents: string,
     jurisdiction: string[],
+    shared_to: SharedTo[],
     email: string,
     size: number
 }
-
+export interface SharedTo {
+  email: string,
+  permissions: Permissions,
+  shared_at: string,
+  user_id: string
+}
+export interface Permissions {
+  read: boolean,
+  write: boolean
+}
 export interface CreateCasePayload {
   user_name: string;
   email: string;
@@ -22,6 +32,12 @@ export interface CreateCasePayload {
 export interface CasePermissions {
   read: boolean;
   write: boolean;
+}
+
+export interface ReceivedCase {
+  userId: string,
+  count: number,
+  cases: ShareCaseToPayload[]
 }
 
 export interface ShareCaseToPayload {

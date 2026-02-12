@@ -21,11 +21,12 @@ import { SecureSharePage } from './components/secureSharePage';
 import { useEffect } from 'react';
 
 Amplify.configure(config);
+import { ReactNode } from "react";
 
 /* -----------------------------------------
    Auth Guard
 ------------------------------------------ */
-function RequireAuth({ children }: { children: JSX.Element }) {
+function RequireAuth({ children }: { children: ReactNode }) {
   const { authStatus } = useAuthenticator((context) => [context.authStatus]);
   const navigate = useNavigate();
   const location = useLocation();

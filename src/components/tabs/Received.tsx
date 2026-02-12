@@ -289,81 +289,7 @@ useEffect(() => {
 
 
 
-  // const showNotification = (message: string, type: 'error' | 'success' = 'error', duration = 4000) => {
-  //   setNotification({ message, type });
-  //   setTimeout(() => setNotification(null), duration);
-  // };
 
-  // Check if folder/case already exists (refreshed data)
-  // const folderExists = (folderName: string): boolean => {
-  //   if (isRoot) {
-  //     return cases.some(c => c.case_number.toLowerCase() === folderName.toLowerCase());
-  //   }
-  //   return files.some(f => f.path.toLowerCase() === `${currentPath}${folderName}/`.toLowerCase());
-  // };
-//   const createCase = useCallback(async (payload: any) => {
-//   const session = await fetchAuthSession();
-//   const token = session.tokens?.idToken?.toString();
-
-//   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-
-//   const res = await fetch(`${apiBaseUrl}/cases`, {
-//     method: "PUT",
-//     headers: {
-//       Authorization: `Bearer ${token}`,
-//       "Content-Type": "application/json",
-//     },
-//     body: JSON.stringify(payload),
-//   });
-
-//   if (!res.ok) {
-//     throw new Error(`Request failed: ${res.status}`);
-//   }
-
-//   return await res.json();
-// }, []);
-
-  // const isSingleFileSelected =
-  //   !!selectedFilePath && !selectedFilePath.endsWith("/");
-
-  // const loadCases = useCallback(async () => {
-  //   try {
-  //     const session = await fetchAuthSession();
-  //     const token = session.tokens?.idToken?.toString();
-
-  //     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-  //     console.log('apiBaseUrl: ', apiBaseUrl)
-  //     const res = await fetch(
-  //       `${apiBaseUrl}/cases`,
-  //       {
-  //         method: "GET",
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //           "Content-Type": "application/json"
-  //         },
-  //         // body: JSON.stringify(caseData)
-  //       },
-  //     );
-  //     if (!res.ok) {
-  //       throw new Error(`Request failed: ${res.status}`);
-  //     }
-    
-  //     const response = await res.json();
-  //     console.log('response: ', response)
-  //     setCases(response)
-  //     return response;
-  //   } catch (err) {
-  //     console.error('Error loading cases:', err);
-  //     return [];
-  //   }
-  // }, [])
-  
-
-  // useEffect(() => {
-  //   loadCases()
-  // }, [loadCases])
-
-  /* ------------------ AUTH INIT ------------------ */
   useEffect(() => {
     async function init() {
       const session = await fetchAuthSession();
@@ -372,58 +298,6 @@ useEffect(() => {
     init();
   }, []);
 
-  // function getFirstLevelItems(
-  //   items: any[],
-  //   basePath: string
-  // ): any[] {
-  //   const map = new Map<string, any>();
-
-  //   if (!basePath.endsWith('/')) {
-  //     basePath += '/';
-  //   }
-
-  //   for (const item of items) {
-
-  //     if (!item.path.startsWith(basePath)) continue;
-
-  //     // const relative = item.path.replace(basePath, '');
-  //     const relative = item.path.slice(basePath.length);
-  //     console.log('relative: ', relative)
-  //     // const parts = relative.split('/').filter(Boolean);
-  //     const parts = relative.split('/').filter(Boolean);
-
-  //     console.log('parts: ', parts)
-  //     // if (parts.length === 1 && !item.path.endsWith('/')) {
-  //     //   map.set(item.path, item);
-  //     //   continue;
-  //     // }
-  //     if (parts.length === 1) {
-  //       map.set(item.path, {
-  //         ...item,
-  //         path: item.path
-  //       });
-  //       continue;
-  //     }
-
-  //     // subfolder name
-  //     const firstPart = parts[0];
-  //     const folderPath = `${basePath}${firstPart}/`;
-
-  //     if (!map.has(folderPath)) {
-  //       map.set(folderPath, {
-  //         path: folderPath,
-  //         isFolder: true
-  //       });
-  //     }
-  //   }
-
-  //   return Array.from(map.values());
-  // }
-
-  // useEffect(() => {
-  //   loadFiles();
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [identityId, currentPath]);
 
   const formatBytes = (bytes?: number) =>
     bytes
@@ -450,45 +324,6 @@ useEffect(() => {
     }
   };
 
-  // const CasesTableHeader = () => (
-  //   <thead>
-  //     <tr>
-  //       <th>
-  //         <input
-  //           ref={selectAllRef}
-  //           type="checkbox"
-  //           checked={cases.length > 0 && selected.size === cases.length}
-  //           onChange={toggleSelectAll}
-  //         />
-  //       </th>
-  //       <th 
-  //         onClick={() => handleSort('case_number')}
-  //         style={{ cursor: 'pointer', userSelect: 'none' }}
-  //       >
-  //         Case Number {sortKey === 'case_number' && (sortOrder === 'asc' ? '↑' : '↓')}
-  //       </th>
-  //       <th 
-  //         onClick={() => handleSort('case_title')}
-  //         style={{ cursor: 'pointer', userSelect: 'none' }}
-  //       >
-  //         Case Title {sortKey === 'case_title' && (sortOrder === 'asc' ? '↑' : '↓')}
-  //       </th>
-  //       <th 
-  //         onClick={() => handleSort('case_agents')}
-  //         style={{ cursor: 'pointer', userSelect: 'none' }}
-  //       >
-  //         Case Agent {sortKey === 'case_agents' && (sortOrder === 'asc' ? '↑' : '↓')}
-  //       </th>
-  //       <th>Jurisdiction</th>
-  //       <th 
-  //         onClick={() => handleSort('size')}
-  //         style={{ cursor: 'pointer', userSelect: 'none' }}
-  //       >
-  //         Size {sortKey === 'size' && (sortOrder === 'asc' ? '↑' : '↓')}
-  //       </th>
-  //     </tr>
-  //   </thead>
-  // );
 
   const SharedCasesTableHeader = () => (
     <thead>
@@ -497,7 +332,7 @@ useEffect(() => {
           <input
             ref={selectAllRef}
             type="checkbox"
-            checked={receivedCases?.cases?.length > 0 && selected.size === receivedCases?.cases?.length}
+            checked={selected.size === receivedCases?.cases?.length && receivedCases?.cases?.length > 0}
             onChange={toggleSelectAll}
           />
         </th>

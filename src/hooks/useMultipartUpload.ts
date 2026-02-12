@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileUploadAPI } from "../api/fileupload";
 import { createChunks } from "../components/utils/createChunks";
 
@@ -31,7 +31,7 @@ export function useFileUploader() {
 
   const [isPaused, setIsPaused] = useState(false);
   const [isNetworkError, setIsNetworkError] = useState(false);
-
+  const queryClient = useQueryClient();
 
   const pause = () => {
     pauseRef.current = true;
@@ -185,6 +185,9 @@ export function useFileUploader() {
 
       return result;
     },
+    onSuccess: () =>  {
+      queryClient.invalidateQueries({ queryKey: ['evidence'] });
+    }
   });
 
   return {
