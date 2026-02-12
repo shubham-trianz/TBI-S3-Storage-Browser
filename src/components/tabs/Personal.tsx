@@ -43,7 +43,7 @@ export const Personal = () => {
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const { user_name } = useUser()
+  const { user_name, email } = useUser()
 
   // const [cases, setCases] = useState<CaseItem[]>([]);
   // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
@@ -72,13 +72,12 @@ export const Personal = () => {
   const { mutate: shareCaseTo } = useShareCaseTo();
 
   
-  console.log('casessss: ', cases)
   const { data: cognitoUsers,  } = useCognitoUser()
-  console.log('cognitoUsers: ', cognitoUsers)
+
+  const filteredUsers = cognitoUsers?.filter(item => item.email != email)
   
   // const [selectedEvidence, setSelectedEvidence] = useState<string[]>([]);
   console.log('cases: ', cases)
-  console.log('evidenceData: ', evidenceData)
   const evidenceByKey = useMemo(() => {
   const map = new Map<string, any>();
   evidenceData?.items?.forEach(ev => {
@@ -603,7 +602,7 @@ useEffect(() => {
 };
 
   const [open, setOpen] = useState(false)
-  const users = cognitoUsers
+  const users = filteredUsers
 
   const extractCaseNumber = (path: string) => {
     const parts = path.split("/");
