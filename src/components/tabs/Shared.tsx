@@ -87,7 +87,7 @@ export const Shared = () => {
   // const [selectedEvidence, setSelectedEvidence] = useState<string[]>([]);
   console.log('cases: ', cases)
 
-  cases = cases?.filter(item => item.shared_to.length > 0)
+  cases = cases?.filter(item => item?.shared_to?.length > 0)
 
   const evidenceByKey = useMemo(() => {
   const map = new Map<string, any>();
