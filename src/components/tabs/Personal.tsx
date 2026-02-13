@@ -17,11 +17,18 @@ import { useCases, useShareCaseTo } from '../../hooks/cases';
 // import ShareDialog from '../utils/ShareDialog';
 // import { useCases } from '../../hooks/cases';
 import { useCaseEvidence } from '../../hooks/useCaseEvidence';
+import FolderIcon from "@mui/icons-material/Folder";
+import DownloadIcon from "@mui/icons-material/Download";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+
+import { FileViewDownloadAPI } from '../../api/viewdownload';
 
 
 import ShareDialog from '../utils/ShareDialog';
 import { useUser } from '../../context/UserContext';
 import { useCognitoUser } from '../../hooks/users';
+import { IconButton, Tooltip } from '@mui/material';
+import toast from 'react-hot-toast';
 // import { useQueryClient } from '@tanstack/react-query';
  
 // type CaseItem = {
@@ -511,6 +518,8 @@ useEffect(() => {
       >
         Uploaded / Last Modified {fileSortKey === 'uploaded' && (fileSortOrder === 'asc' ? ' ▲' : ' ▼')}
       </th>
+      <th>Size</th>
+      <th>Actions</th>
     </tr>
   </thead>
 );
@@ -554,6 +563,22 @@ useEffect(() => {
   const renderFileRow = (item: any) => {
   const name = item.path.split('/').filter(Boolean).pop()!;
   const isFolder = item.path.endsWith('/');
+
+  
+
+
+  const handleView = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'view');
+    console.log('url: ', url)
+    window.open(url, '_blank');
+  };
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'download');
+    window.location.href = url;
+  };
   
   // Try to match evidence by full path first, then by filename
   let evidence = evidenceByKey.get(item.path);
@@ -580,7 +605,7 @@ useEffect(() => {
         />
       </td>
 
-      <td>{isFolder ? '📁' : '📄'} {name}</td>
+      <td>{isFolder ? <FolderIcon color="primary" /> : '📄'} {name}</td>
 
       <td>
         {evidence ? evidence.evidence_number : '—'}
@@ -597,6 +622,27 @@ useEffect(() => {
             ? item.lastModified.toLocaleString()
             : '—'}
       </td>
+
+      <td>{formatBytes(item.size)}</td>
+      <td>
+
+        {!isFolder && (
+          <>
+            <div style={{display: 'flex', justifyContent:"center", alignItems:"center", gap:"8px"}}>
+                <Tooltip title="View">
+                  <IconButton onClick={handleView} color="primary">
+                    <VisibilityIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Download">
+                  <IconButton onClick={handleDownload} color="secondary">
+                    <DownloadIcon />
+                  </IconButton>
+                </Tooltip>
+            </div>
+          </>
+        )}
+      </td>
     </tr>
   );
 };
@@ -611,37 +657,6 @@ useEffect(() => {
 
   return (
     <>
-      {/* {notification && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '20px',
-            right: '20px',
-            backgroundColor: notification.type === 'error' ? '#f44336' : '#4caf50',
-            color: 'white',
-            padding: '12px 16px',
-            borderRadius: '4px',
-            zIndex: 1000,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-            animation: 'slideIn 0.3s ease-in-out',
-          }}
-        >
-          {notification.message}
-        </div>
-      )} */}
-
-      {/* <style>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-      `}</style> */}
 
       <Flex
         justifyContent="space-between"
@@ -709,7 +724,7 @@ useEffect(() => {
           </div>
 
           {isRoot && (
-            <Button size='small' onClick={() => setOpen(true)}>
+            <Button size='small' onClick={() => setOpen(true)} disabled={selected.size === 0}>
               Share
             </Button>
           )}
@@ -780,6 +795,9 @@ useEffect(() => {
 
               console.log('Shared case items:', items);
               await shareCaseTo(items);
+              console.log('closing dialog')
+              setOpen(false)
+              toast.success('Success')
               // queryClient.invalidateQueries({ queryKey: ['cases'] })
             }}
 

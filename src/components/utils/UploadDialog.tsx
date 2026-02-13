@@ -38,6 +38,7 @@ export function UploadDialog({
 
   const evidenceNumberRef = useRef<HTMLInputElement | null>(null);
   const evidenceDescriptionRef = useRef<HTMLInputElement | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const {
     uploadMutation,
@@ -65,6 +66,7 @@ export function UploadDialog({
     setError(null);
 
     try {
+      setLoading(true)
       const result = await uploadMutation.mutateAsync({
         file,
         key: `${prefix}${file.name}`,
@@ -81,7 +83,9 @@ export function UploadDialog({
         onUploaded?.();
         onClose();
       }
+      setLoading(false)
     } catch (err) {
+      setLoading(false)
       console.error(err);
       setError("Upload failed");
     }
@@ -123,6 +127,7 @@ export function UploadDialog({
           <Button
             variant="outlined"
             component="label"
+            disabled={loading}
           >
             Select File
             <input

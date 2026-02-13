@@ -17,7 +17,10 @@ import { useReceivedCases } from '../../hooks/cases';
 import { useUser } from '../../context/UserContext';
 import { useListS3Objects } from '../../hooks/lists3objects';
 import { useCaseEvidence } from '../../hooks/useCaseEvidence';
-
+import { FileViewDownloadAPI } from '../../api/viewdownload';
+import { IconButton, Tooltip } from '@mui/material';
+import DownloadIcon from "@mui/icons-material/Download";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 // import { useCases 
 // } from '../../hooks/cases';
 // type CaseItem = {
@@ -31,6 +34,15 @@ import { useCaseEvidence } from '../../hooks/useCaseEvidence';
 // };
 
 export const Received = () => {
+    const { user_name } = useUser()
+
+  const params = new URLSearchParams(location.search)
+  const caseId = params.get('caseId')
+  console.log('caseId: ', caseId)
+
+  const {data: receivedCases} = useReceivedCases(user_name)
+  console.log('receivedCases: ', receivedCases)
+
   // const [files, setFiles] = useState<any[]>([]);
   const [baseKey, setBaseKey] = useState<string | null>(null); // case root
   const [activeCase, setActiveCase] = useState<null | {
@@ -95,7 +107,6 @@ export const Received = () => {
   const { data: files=[]} = useListS3Objects(currentPrefix);
   console.log('objectssssss: ', files)
   // useEffect(() => setFiles(objects), [currentPrefix])
-  const { user_name } = useUser()
   console.log('currentPath: ', currentPath)
   const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
@@ -111,8 +122,9 @@ export const Received = () => {
   const [searchValue, setSearchValue] = useState('');
   // const { data: cases, isLoading } = useCases();
   // console.log('cases: ', cases)
-  const {data: receivedCases} = useReceivedCases(user_name)
-  console.log('receivedCases: ', receivedCases)
+  
+
+  
   
   type SearchField = 'case_number' | 'case_title' | 'case_agents';
   type EvidenceSearchField = 'name' | 'evidence_number' | 'description';
@@ -385,13 +397,14 @@ useEffect(() => {
           Description {fileSortKey === 'description' && (fileSortOrder === 'asc' ? '↑' : '↓')}
         </th>
         <th>Type</th>
-        <th>Size</th>
         <th 
           onClick={() => handleFileSort('uploaded')}
           style={{ cursor: 'pointer', userSelect: 'none' }}
         >
           Uploaded {fileSortKey === 'uploaded' && (fileSortOrder === 'asc' ? '↑' : '↓')}
         </th>
+        <th>Size</th>
+        <th>Actions</th>
       </tr>
     </thead>
   );
@@ -468,6 +481,18 @@ useEffect(() => {
     const name = item.path.split('/').filter(Boolean).pop()!;
     const isFolder = item.path.endsWith('/');
 
+    const handleView = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'view');
+      console.log('url: ', url)
+      window.open(url, '_blank');
+    };
+  
+    const handleDownload = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'download');
+      window.location.href = url;
+    };
     // Get evidence metadata
     const evidence = evidenceByKey.get(item.path) || evidenceByKey.get(name);
 
@@ -502,6 +527,25 @@ useEffect(() => {
             : item.lastModified
             ? item.lastModified.toLocaleString()
             : '—'}
+        </td>
+        <td>
+  
+          {!isFolder && (
+            <>
+              <div style={{display: 'flex', alignItems: 'center'}}>
+                  <Tooltip title="View">
+                    <IconButton onClick={handleView} color="primary">
+                      <VisibilityIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Download">
+                    <IconButton onClick={handleDownload} color="secondary">
+                      <DownloadIcon />
+                    </IconButton>
+                  </Tooltip>
+              </div>
+            </>
+          )}
         </td>
       </tr>
     );
