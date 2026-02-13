@@ -73,25 +73,25 @@ export const DeleteObjects = ({
 
     try {
       console.log('selectedPaths: ', selectedPaths)
-      for (const path of selectedPaths) {
-        if (path.endsWith("/")) {
-          const result = await list({ path });
-          console.log('result for deletion: ', result)
+      // for (const path of selectedPaths) {
+      //   if (path.endsWith("/")) {
+      //     const result = await list({ path });
+      //     console.log('result for deletion: ', result)
 
-          // Ignore the folder marker itself
-          const hasFiles = result.items.some(
-            (item) => item.path !== path
-          );
+      //     // Ignore the folder marker itself
+      //     const hasFiles = result.items.some(
+      //       (item) => item.path !== path
+      //     );
 
-          if (hasFiles) {
-            setErrorMsg(
-              "Cannot delete folder because it contains files."
-            );
-            setErrorOpen(true);
-            return; 
-          }
-        }
-      }
+      //     if (hasFiles) {
+      //       setErrorMsg(
+      //         "Cannot delete folder because it contains files."
+      //       );
+      //       setErrorOpen(true);
+      //       return; 
+      //     }
+      //   }
+      // }
 
       setConfirmOpen(true);
     } catch (err) {

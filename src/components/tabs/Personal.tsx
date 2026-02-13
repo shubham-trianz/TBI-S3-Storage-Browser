@@ -453,12 +453,12 @@ useEffect(() => {
     <thead>
       <tr>
         <th>
-          {/* <input
+          <input
             ref={selectAllRef}
             type="checkbox"
-            checked={cases?.length > 0 && selected.size === cases?.length}
+            checked={selected.size === cases?.length && cases?.length > 0}
             onChange={toggleSelectAll}
-          /> */}
+          />
         </th>
         {/* <th>Case Number</th> */}
         <th onClick={() => handleSort('case_number')} style={{ cursor: 'pointer' }}>
