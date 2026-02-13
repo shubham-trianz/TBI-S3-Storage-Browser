@@ -1,17 +1,16 @@
 // import { list } from 'aws-amplify/storage';
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { fetchAuthSession } from 'aws-amplify/auth';
+// import { fetchAuthSession } from 'aws-amplify/auth';
 import {
   Flex,
   Heading,
   Divider,
-  Button,
 } from "@aws-amplify/ui-react";
 import { UploadButton } from "../utils/UploadButton";
 // import { DeleteObjects } from "../utils/DeleteObjects";
 // import { CreateCase } from '../utils/CreateCase';
 // import { CreateFolder } from '../utils/CreateFolder';
-import { generateAndCopyLink } from "../utils/generateLink";
+// import { generateAndCopyLink } from "../utils/generateLink";
 import Breadcrumbs from "../utils/Breadcrumbs"
 import { useReceivedCases } from '../../hooks/cases';
 import { useUser } from '../../context/UserContext';
@@ -36,13 +35,13 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 export const Received = () => {
     const { user_name } = useUser()
 
-  const params = new URLSearchParams(location.search)
-  const caseId = params.get('caseId')
-  console.log('caseId: ', caseId)
+  // const params = new URLSearchParams(location.search)
+  // const caseId = params.get('caseId')
+  // console.log('caseId: ', caseId)
 
   const {data: receivedCases} = useReceivedCases(user_name)
   console.log('receivedCases: ', receivedCases)
-
+  const cases = receivedCases?.cases
   // const [files, setFiles] = useState<any[]>([]);
   const [baseKey, setBaseKey] = useState<string | null>(null); // case root
   const [activeCase, setActiveCase] = useState<null | {
@@ -53,7 +52,7 @@ export const Received = () => {
   console.log('isInsideCase: ', isInsideCase)
   console.log('activeCase: ', activeCase)
   // const [loading, setLoading] = useState(true);
-  const [identityId, setIdentityId] = useState<string | null>(null);
+  // const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // const [cases, setCases] = useState<CaseItem[]>([]);
@@ -108,14 +107,14 @@ export const Received = () => {
   console.log('objectssssss: ', files)
   // useEffect(() => setFiles(objects), [currentPrefix])
   console.log('currentPath: ', currentPath)
-  const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
-  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  // const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
+  // const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   // const isRoot = pathStack.length === 0;
   const isRoot = baseKey === null;
   // const isFilesRoot = baseKey !== null && pathStack.length === 0;
 
-  const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
-  const selectedFolders = [...selected].filter(p => p.endsWith("/"));
+  // const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
+  // const selectedFolders = [...selected].filter(p => p.endsWith("/"));
   const selectAllRef = useRef<HTMLInputElement>(null);
   const [searchField, setSearchField] = useState<SearchField>('case_number');
   const [evidenceSearchField, setEvidenceSearchField] = useState<EvidenceSearchField>('name');
@@ -148,18 +147,18 @@ export const Received = () => {
   // const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   
-  // const filteredCases = useMemo(() => {
-  //   if (!cases || !Array.isArray(cases)) return [];
-  //   if (!searchValue.trim()) return cases;
+  const filteredCases = useMemo(() => {
+    if (!cases || !Array.isArray(cases)) return [];
+    if (!searchValue.trim()) return cases;
 
-  //   const q = searchValue.toLowerCase();
+    const q = searchValue.toLowerCase();
 
-  //   return cases?.filter(item =>
-  //     String(item[searchField] ?? '')
-  //       .toLowerCase()
-  //       .includes(q)
-  //   );
-  // }, [cases, searchField, searchValue]);
+    return cases?.filter(item =>
+      String(item[searchField] ?? '')
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [cases, searchField, searchValue]);
 
 
 //   const sortedCases = useMemo(() => {
@@ -298,25 +297,25 @@ useEffect(() => {
   setSearchValue('');
 }, [searchField, evidenceSearchField]);
   
-  const rootFolderPrefix = identityId
-  ? `private/${identityId}/`
-  : null;
-  const canGenerateLink =
-    selectedFiles.length > 0 ||
-    selectedFolders.length === 1 ||
-    !!currentFolderPrefix ||
-    !!rootFolderPrefix;  
+  // const rootFolderPrefix = identityId
+  // ? `private/${identityId}/`
+  // : null;
+  // const canGenerateLink =
+  //   selectedFiles.length > 0 ||
+  //   selectedFolders.length === 1 ||
+  //   !!currentFolderPrefix ||
+  //   !!rootFolderPrefix;  
 
 
 
 
-  useEffect(() => {
-    async function init() {
-      const session = await fetchAuthSession();
-      setIdentityId(session.identityId ?? null);
-    }
-    init();
-  }, []);
+  // useEffect(() => {
+  //   async function init() {
+  //     const session = await fetchAuthSession();
+  //     setIdentityId(session.identityId ?? null);
+  //   }
+  //   init();
+  // }, []);
 
 
   const formatBytes = (bytes?: number) =>
@@ -610,7 +609,7 @@ useEffect(() => {
             </div>
           </div>
 
-          <Button
+          {/* <Button
             size="small"
             variation="primary"
             isLoading={isGeneratingLink}
@@ -651,7 +650,7 @@ useEffect(() => {
           >
             Generate link
           </Button>
-          
+           */}
             
           {isInsideCase && activeCase.canWrite && (
             <UploadButton
@@ -710,7 +709,7 @@ useEffect(() => {
           )} */}
 
           {/* {!loading && isRoot && receivedCases?.cases?.map(renderSharedCaseRow)} */}
-          {isRoot && receivedCases?.cases?.map(renderSharedCaseRow)}
+          {isRoot && filteredCases?.map(renderSharedCaseRow)}
           {/* {!loading && !isRoot && files.map(renderFileRow)} */}
           {!isRoot && sortedFiles.map(renderFileRow)}
         </tbody>

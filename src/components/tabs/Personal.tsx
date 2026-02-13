@@ -11,7 +11,7 @@ import { UploadButton } from "../utils/UploadButton";
 import { DeleteObjects } from "../utils/DeleteObjects";
 import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
-import { generateAndCopyLink } from "../utils/generateLink";
+// import { generateAndCopyLink } from "../utils/generateLink";
 import Breadcrumbs from "../utils/Breadcrumbs"
 import { useCases, useShareCaseTo } from '../../hooks/cases';
 // import ShareDialog from '../utils/ShareDialog';
@@ -819,7 +819,7 @@ useEffect(() => {
             Refresh
           </Button>
 
-          <Button
+          {isRoot && (<Button
             size="small"
             variation="primary"
             isLoading={isGeneratingLink}
@@ -827,15 +827,39 @@ useEffect(() => {
             disabled={isGeneratingLink || !canGenerateLink}
             onClick={async () => {
               try {
-                setIsGeneratingLink(true);
+                // setIsGeneratingLink(true);
+                // console.log('selectedFilesssssssssssssssssss: ', selected)
+                // const case_number = selected
+                 const selectedArray = Array.from(selected);
+
+                    if (!selectedArray.length) return;
+
+                    const fullPath = selectedArray[0];
+
+                    // Remove trailing slash
+                    const trimmedPath = fullPath.replace(/\/$/, "");
+
+                    // Split by "/"
+                    const parts = trimmedPath.split("/");
+
+                    // Case number is last segment
+                    const case_number = parts[parts.length - 1];
+
+                    console.log("Extracted case number:", case_number);
+
+                    const link = `${window.location.origin}/access/${case_number}`;
+
+                    await navigator.clipboard.writeText(link);
+
+                    toast.success("Link copied to clipboard!");
 
                 // CASE 1: One or more files selected → ZIP only those files
-                if (selectedFiles.length > 0) {
-                  await generateAndCopyLink({
-                    objectKeys: selectedFiles,
-                  });
-                  return;
-                }
+                // if (selectedFiles.length > 0) {
+                //   await generateAndCopyLink({
+                //     objectKeys: selectedFiles,
+                //   });
+                //   return;
+                // }
                 // if (selectedEvidence.length > 0) {
                 //   await generateAndCopyLink({
                 //     objectKeys: selectedEvidence,
@@ -844,19 +868,19 @@ useEffect(() => {
                 // }
 
                 // CASE 2: Folder selected → ZIP that folder
-                if (selectedFolders.length === 1) {
-                  await generateAndCopyLink({
-                    folderPrefix: selectedFolders[0],
-                  });
-                  return;
-                }
+                // if (selectedFolders.length === 1) {
+                //   await generateAndCopyLink({
+                //     folderPrefix: selectedFolders[0],
+                //   });
+                //   return;
+                // }
 
                 // CASE 3: Inside folder, nothing selected → ZIP current folder
-                if (!isRoot && currentFolderPrefix) {
-                  await generateAndCopyLink({
-                    folderPrefix: currentFolderPrefix,
-                  });
-                }
+                // if (!isRoot && currentFolderPrefix) {
+                //   await generateAndCopyLink({
+                //     folderPrefix: currentFolderPrefix,
+                //   });
+                // }
               } catch (err) {
                 console.error(err);
               } finally {
@@ -866,6 +890,7 @@ useEffect(() => {
           >
             Generate link
           </Button>
+          )}
 
 
           {isRoot ? (

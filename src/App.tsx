@@ -22,6 +22,7 @@ import { useEffect } from 'react';
 
 Amplify.configure(config);
 import { ReactNode } from "react";
+import { AccessResolver } from './components/utils/AccessResolver';
 
 /* -----------------------------------------
    Auth Guard
@@ -116,6 +117,14 @@ function AuthenticatedApp() {
 
         {/* 🔓 Secure share route (NOT wrapped in RequireAuth) */}
         <Route path="/secure-view" element={<SecureSharePage />} />
+        <Route
+          path="/access/:caseId"
+          element={
+            <RequireAuth>
+              <AccessResolver />
+            </RequireAuth>
+          }
+        />
 
         {/* Protected pages */}
         <Route
