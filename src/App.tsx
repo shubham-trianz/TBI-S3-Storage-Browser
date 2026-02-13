@@ -28,22 +28,21 @@ import { ReactNode } from "react";
 ------------------------------------------ */
 function RequireAuth({ children }: { children: ReactNode }) {
   const { authStatus } = useAuthenticator((context) => [context.authStatus]);
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    if (authStatus === 'unauthenticated') {
-      navigate('/login', {
-        state: {
-          from: location.pathname + location.search, // preserve full URL
-        },
-        replace: true,
-      });
-    }
-  }, [authStatus, navigate, location]);
+  if (authStatus === 'unauthenticated') {
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location.pathname + location.search }}
+        replace
+      />
+    );
+  }
 
   if (authStatus !== 'authenticated') {
-    return null;
+    return null; // still loading
   }
 
   return children;

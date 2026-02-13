@@ -159,7 +159,7 @@ useEffect(() => {
 
     onShare(payload);
     setSelectedUsers([]);
-    onClose();
+    // onClose();
   };
 
   return (

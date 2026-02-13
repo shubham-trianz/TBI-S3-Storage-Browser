@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileUploadAPI } from "../api/fileupload";
 import { createChunks } from "../components/utils/createChunks";
+import toast from "react-hot-toast";
 
 interface UploadInput {
   file: File;
@@ -187,6 +188,10 @@ export function useFileUploader() {
     },
     onSuccess: () =>  {
       queryClient.invalidateQueries({ queryKey: ['evidence'] });
+      toast.success('File Uploaded')
+    },
+    onError: (error) => {
+      toast.error(error.message)
     }
   });
 
