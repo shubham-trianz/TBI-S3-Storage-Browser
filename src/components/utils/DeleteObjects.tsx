@@ -1,4 +1,4 @@
-import { remove, list } from "aws-amplify/storage";
+import { remove } from "aws-amplify/storage";
 import { Button, Flex } from "@aws-amplify/ui-react";
 import { useEffect, useState } from "react";
 import {
