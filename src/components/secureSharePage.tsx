@@ -156,45 +156,49 @@ export const SecureSharePage = () => {
   }, [navigate]);
 
   // 🔐 Validate share access before loading content
-useEffect(() => {
-  const validateAccess = async () => {
-    if (!isAuthenticated || !prefix) return;
+  useEffect(() => {
+    const validateAccess = async () => {
+      if (!isAuthenticated || !prefix) return;
 
-    try {
-      setIsAccessChecking(true);
+      try {
+        setIsAccessChecking(true);
 
-      const token = localStorage.getItem("external_access_token");
+        const email = localStorage.getItem("external_user_email");
 
-      const res = await fetch(
-        `${API_BASE}/external-share-info?prefix=${encodeURIComponent(prefix)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        if (!email) {
+          throw new Error("No external email found");
         }
-      );
 
-      if (!res.ok) {
-        throw new Error("Access denied");
+        const res = await fetch(
+          `${API_BASE}/external-share-info?email=${encodeURIComponent(email)}&prefix=${encodeURIComponent(prefix)}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error("Access denied");
+        }
+
+        setIsAccessDenied(false);
+      } catch (err) {
+        console.error("Access validation failed:", err);
+
+        localStorage.removeItem("external_access_token");
+        localStorage.removeItem("external_token_expiry");
+        localStorage.removeItem("external_user_email");
+
+        setIsAccessDenied(true);
+      } finally {
+        setIsAccessChecking(false);
       }
+    };
 
-      setIsAccessDenied(false);
-    } catch (err) {
-      console.error("Access validation failed:", err);
+    validateAccess();
+  }, [isAuthenticated, prefix]);
 
-      // Clear session immediately
-      localStorage.removeItem("external_access_token");
-      localStorage.removeItem("external_token_expiry");
-      localStorage.removeItem("external_user_email");
-
-      setIsAccessDenied(true);
-    } finally {
-      setIsAccessChecking(false);
-    }
-  };
-
-  validateAccess();
-}, [isAuthenticated, prefix]);
 
   
   // Extract case number from prefix
@@ -567,50 +571,130 @@ useEffect(() => {
     return evidenceMetadata.get(fileKey) || null;
   };
 
-  // 🔧 FIX: Download Functions - Generate new signed URL for download
-  const handleDownloadCurrent = async () => {
-    if (!selectedFile) return;
-    
-    setDownloading(true);
-    try {
-      const token = localStorage.getItem('external_access_token');
-      
-      // Generate a fresh signed URL for download
-      const res = await fetch(`${API_BASE}/objects/generate-link`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mode: "sign-single",
-          objectKey: selectedFile.key,
-        }),
-      });
+  const downloadFromSignedUrl = async (signedUrl: string, fileName: string) => {
+  const response = await fetch(signedUrl);
+  const blob = await response.blob();
 
-      if (!res.ok) {
-        throw new Error(`Failed to generate download link: ${res.status}`);
-      }
+  const blobUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 
-      const data = await res.json();
-      
-      // Create download link
-      const link = document.createElement('a');
-      link.href = data.url;
-      link.download = selectedFile.name;
-      link.setAttribute('download', selectedFile.name);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast.success('Download started');
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Failed to download file');
-    } finally {
-      setDownloading(false);
+  window.URL.revokeObjectURL(blobUrl);
+};
+
+const handleDownloadCurrent = async () => {
+  if (!selectedFile) return;
+
+  setDownloading(true);
+
+  try {
+    const token = localStorage.getItem("external_access_token");
+
+    const res = await fetch(`${API_BASE}/objects/generate-link`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mode: "sign-single",
+        objectKey: selectedFile.key,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to generate download link`);
     }
-  };
+
+    const data = await res.json();
+
+    await downloadFromSignedUrl(data.url, selectedFile.name);
+
+    toast.success("Download started");
+  } catch (error) {
+    console.error("Download error:", error);
+    toast.error("Failed to download file");
+  } finally {
+    setDownloading(false);
+  }
+};
+
+const handleDownloadSelected = async () => {
+  if (selectedFiles.size === 0) return;
+
+  setDownloading(true);
+
+  try {
+    const token = localStorage.getItem("external_access_token");
+
+    const res = await fetch(`${API_BASE}/objects/generate-link`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        objectKeys: Array.from(selectedFiles),
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to generate zip");
+    }
+
+    const data = await res.json();
+
+    await downloadFromSignedUrl(data.url, "selected_files.zip");
+
+    toast.success("Zip download started");
+  } catch (error) {
+    console.error(error);
+    toast.error("Failed to download zip");
+  } finally {
+    setDownloading(false);
+  }
+};
+
+const handleDownloadFolder = async () => {
+  if (!prefix) return;
+
+  setDownloading(true);
+
+  try {
+    const token = localStorage.getItem("external_access_token");
+
+    const res = await fetch(`${API_BASE}/objects/generate-link`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        folderPrefix: prefix,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to generate folder zip");
+    }
+
+    const data = await res.json();
+
+    await downloadFromSignedUrl(data.url, `${folderName}.zip`);
+
+    toast.success("Folder download started");
+  } catch (error) {
+    console.error(error);
+    toast.error("Failed to download folder");
+  } finally {
+    setDownloading(false);
+  }
+};
+
 
   const toggleFileSelection = (key: string) => {
     setSelectedFiles(prev => {
@@ -870,7 +954,29 @@ if (isAccessDenied) {
           </Heading>
         </Flex>
 
-        <Flex gap="1rem" alignItems="center">
+        <Flex gap="0.75rem" alignItems="center">
+          {selectedFiles.size > 0 && (
+            <Button
+              size="small"
+              variation="primary"
+              onClick={handleDownloadSelected}
+              isLoading={downloading}
+            >
+              Download Selected ({selectedFiles.size})
+            </Button>
+          )}
+
+          {files.length > 0 && (
+            <Button
+              size="small"
+              variation="primary"
+              onClick={handleDownloadFolder}
+              isLoading={downloading}
+            >
+              Download Case Folder
+            </Button>
+          )}
+
           {caseNumber && (
             <Badge variation="info" size="small">
               <Flex gap="0.5rem" alignItems="center">
@@ -895,19 +1001,6 @@ if (isAccessDenied) {
             flexShrink: 0,
           }}
         >
-          <Flex
-            direction="column"
-            padding="1.5rem"
-            gap="0.5rem"
-            style={{
-              borderBottom: "1px solid #e5e7eb",
-              backgroundColor: "#ffffff",
-            }}
-          >
-            <Heading level={6} style={{ margin: 0, fontSize: "0.875rem", color: "#6b7280", fontWeight: 600 }}>
-              FILES ({files.length})
-            </Heading>
-          </Flex>
 
           {/* Case Metadata Panel */}
           {caseMetadata && (

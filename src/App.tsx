@@ -61,12 +61,12 @@ function RequireExternalAuth({ children }: { children: ReactNode}) {
         console.log("RequireExternalAuth - Not authenticated, redirecting to /external-login");
         console.log("RequireExternalAuth - Will return to:", redirectUrl);
         
-        navigate('/external-login', {
-          state: {
-            from: redirectUrl,
-          },
-          replace: true,
-        });
+        const fullUrl = location.pathname + location.search;
+      navigate(
+        `/external-login?redirect=${encodeURIComponent(fullUrl)}`,
+        { replace: true }
+      );
+
       } finally {
         setIsChecking(false);
       }
