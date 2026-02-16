@@ -348,17 +348,18 @@ export const SecureSharePage = () => {
         );
 
         const data = await res.json();
+                const merged = [
+          ...(data.folders || []),
+          ...(data.files || []),
+        ];
+        const normalized = merged.map((obj: any) => ({
+          name: obj.path.split("/").filter(Boolean).pop(),
+          key: obj.path,
+          size: obj.size || 0,
+          lastModified: obj.lastModified || null,
+          type: obj.type,
+        }));
 
-        const normalized = (Array.isArray(data) ? data : [])
-          .map((obj: any) => ({
-            name: obj.path.split("/").filter(Boolean).pop(),
-            key: obj.path,
-            size: obj.size || 0,
-            lastModified: obj.lastModified || null,
-            type: obj.type,
-          }));
-
-        console.log("Normalized files:", normalized);
         setFiles(normalized);
 
         // Clear expired cache entries on page load
