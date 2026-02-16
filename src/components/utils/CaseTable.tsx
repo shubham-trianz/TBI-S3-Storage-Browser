@@ -286,7 +286,6 @@ function formatBytes(bytes?: number) {
   const rows = useMemo(() => {
   if (viewMode === "cases") {
 
-    console.log('dataaooooooo: ', data)
     return data.map((item) => ({
       id: item.source_key,
       case_number: item.case_number,
@@ -327,7 +326,6 @@ function formatBytes(bytes?: number) {
   // files mode
   return data.map((item) => {
     const name = item.Key?.split("/").filter(Boolean).pop() || "";
-    console.log('nameeeeeeeeeeeeeeeeee: ', item)
     return {
       id: item.Key,
       name,
