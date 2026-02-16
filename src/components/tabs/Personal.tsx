@@ -68,6 +68,8 @@ export const Personal = () => {
   const { data: cases, isLoading } = useCases();
   const { mutate: shareCaseTo } = useShareCaseTo();
 
+  
+
   const s3Ref = useRef<any>(null);
   useEffect(() => {
     createS3Client().then(client => {
@@ -76,7 +78,9 @@ export const Personal = () => {
   }, []);
 
   useEffect(() => {
-    
+    if(!isLoading){
+      setCasesLoading(false)
+    }
     if(cases && cases?.length > 0){
       setCasesLoading(false)
     }

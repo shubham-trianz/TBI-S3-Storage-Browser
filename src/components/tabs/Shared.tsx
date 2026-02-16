@@ -76,6 +76,10 @@ export const Shared = () => {
   }, []);
 
   useEffect(() => {
+
+    if(!isLoading){
+      setCasesLoading(false)
+    }
     
     if(cases && cases?.length > 0){
       setCasesLoading(false)
