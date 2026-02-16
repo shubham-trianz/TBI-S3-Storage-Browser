@@ -17,29 +17,17 @@ import { useCases, useShareCaseTo } from '../../hooks/cases';
 // import ShareDialog from '../utils/ShareDialog';
 // import { useCases } from '../../hooks/cases';
 import { useCaseEvidence } from '../../hooks/useCaseEvidence';
-import FolderIcon from "@mui/icons-material/Folder";
-import DownloadIcon from "@mui/icons-material/Download";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 
-import { FileViewDownloadAPI } from '../../api/viewdownload';
-
+import CasesGrid from '../utils/CaseTable';
 
 import ShareDialog from '../utils/ShareDialog';
 import { useUser } from '../../context/UserContext';
 import { useCognitoUser } from '../../hooks/users';
-import { IconButton, Tooltip } from '@mui/material';
+// import { IconButton, Tooltip } from '@mui/material';
 import toast from 'react-hot-toast';
-// import { useQueryClient } from '@tanstack/react-query';
- 
-// type CaseItem = {
-//   case_number: string;
-//   case_title: string;
-//   jurisdiction: string;
-//   case_agents: string;
-//   email: string;
-//   user_name: string;
-//   size?: number;
-// };
+
+import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
+
 
 
 
@@ -50,12 +38,27 @@ export const Personal = () => {
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  const [casesLoading, setCasesLoading] = useState(true);
+  const [filesLoading, setFilesLoading] = useState(true);
+
   const { user_name, email } = useUser()
 
-  // const [cases, setCases] = useState<CaseItem[]>([]);
-  // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
-  const currentPath = pathStack.join('');
-  console.log('currentPath: ', currentPath)
+  const createS3Client = async () => {
+    const session = await fetchAuthSession();
+
+    if (!session.credentials) {
+      throw new Error("No AWS credentials found");
+    }
+
+    return new S3Client({
+      region: "us-east-1",
+      credentials: session.credentials
+    });
+  };
+  
+    const currentPath = pathStack.join('');
+  // console.log('currentPath: ', currentPath)
   const currentCaseNumber =
   pathStack.length > 0 ? pathStack[0].replace('/', '') : null;
 
@@ -65,10 +68,12 @@ export const Personal = () => {
   isFetching: isEvidenceFetching, // This shows when refetching
   refetch: refetchEvidence,
 } = useCaseEvidence(currentCaseNumber ?? '');
-
+  // console.log('evidenceDataaaaaa: ', evidenceData)
   const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const isRoot = pathStack.length === 0;
+  const viewMode = isRoot ? "cases" : "files";
+
   const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
   const selectedFolders = [...selected].filter(p => p.endsWith("/"));
   const selectAllRef = useRef<HTMLInputElement>(null);
@@ -78,13 +83,33 @@ export const Personal = () => {
   const { data: cases, isLoading } = useCases();
   const { mutate: shareCaseTo } = useShareCaseTo();
 
+  const s3Ref = useRef<any>(null);
+  useEffect(() => {
+    createS3Client().then(client => {
+        s3Ref.current = client
+    })
+  }, []);
+
+  useEffect(() => {
+    
+    if(cases && cases?.length > 0){
+      setCasesLoading(false)
+    }
+  }, [cases])
+
+  // useEffect(() => {
+    
+  //   if(files && files?.length > 0){
+  //     console.log('files changeddddd')
+  //     setFilesLoading(false)
+  //   }
+  // }, [files])
   
   const { data: cognitoUsers,  } = useCognitoUser()
-
   const filteredUsers = cognitoUsers?.filter(item => item.email != email)
   
   // const [selectedEvidence, setSelectedEvidence] = useState<string[]>([]);
-  console.log('cases: ', cases)
+  // console.log('cases: ', cases)
   const evidenceByKey = useMemo(() => {
   const map = new Map<string, any>();
   evidenceData?.items?.forEach(ev => {
@@ -100,177 +125,7 @@ export const Personal = () => {
   return map;
 }, [evidenceData]);
 
-  type SearchField = 'case_number' | 'case_title' | 'case_agents';
-  type EvidenceSearchField = 'name' | 'evidence_number' | 'description';
 
-  const SEARCH_FIELDS: { key: SearchField; label: string }[] = [
-    { key: 'case_number', label: 'Case Number' },
-    { key: 'case_title', label: 'Case Title' },
-    { key: 'case_agents', label: 'Case Agent' }
-  ];
-
-  const EVIDENCE_SEARCH_FIELDS: { key: EvidenceSearchField; label: string }[] = [
-    { key: 'name', label: 'File Name' },
-    { key: 'evidence_number', label: 'Evidence Number' },
-    { key: 'description', label: 'Description' }
-  ];
-
-  type SortKey = 'case_number' | 'case_title' | 'case_agents' | 'size';
-  type SortOrder = 'asc' | 'desc';
-
-  const [sortKey, setSortKey] = useState<SortKey>('case_number');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-
-  const filteredCases = useMemo(() => {
-    if (!cases || !Array.isArray(cases)) return [];
-    if (!searchValue.trim()) return cases;
-
-    const q = searchValue.toLowerCase();
-
-    return cases?.filter(item =>
-      String(item[searchField] ?? '')
-        .toLowerCase()
-        .includes(q)
-    );
-  }, [cases, searchField, searchValue]);
-
-
-  const sortedCases = useMemo(() => {
-  const sorted = [...filteredCases].sort((a, b) => {
-    
-    if (sortKey === 'size') {
-      const aSize = typeof a.size === 'number' ? a.size : 0;
-      const bSize = typeof b.size === 'number' ? b.size : 0;
-      return aSize - bSize;
-    }
-
-    const aVal = String(a[sortKey] ?? '');
-    const bVal = String(b[sortKey] ?? '');
-
-    // string sort
-    return String(aVal ?? '').localeCompare(String(bVal ?? ''), undefined, {
-      sensitivity: 'base',
-      numeric: true
-    });
-  });
-
-  return sortOrder === 'asc' ? sorted : sorted.reverse();
-}, [filteredCases, sortKey, sortOrder]);
-
-const handleSort = (key: SortKey) => {
-  if (sortKey === key) {
-    setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
-  } else {
-    setSortKey(key);
-    setSortOrder('asc');
-  }
-};
-
-// File sorting and filtering
-type FileSortKey = 'name' | 'evidence_number' | 'description' | 'uploaded';
-const [fileSortKey, setFileSortKey] = useState<FileSortKey>('name');
-const [fileSortOrder, setFileSortOrder] = useState<SortOrder>('asc');
-
-const filteredFiles = useMemo(() => {
-  if (!searchValue.trim() || isRoot) return files;
-
-  const q = searchValue.toLowerCase();
-
-  return files.filter(item => {
-    const name = item.path.split('/').filter(Boolean).pop() || '';
-    const evidence = evidenceByKey.get(item.path) || evidenceByKey.get(name);
-
-    switch (evidenceSearchField) {
-      case 'name':
-        return name.toLowerCase().includes(q);
-      
-      case 'evidence_number':
-        return evidence?.evidence_number?.toLowerCase().includes(q) || false;
-      
-      case 'description':
-        return evidence?.description?.toLowerCase().includes(q) || false;
-      
-      default:
-        return false;
-    }
-  });
-}, [files, searchValue, evidenceSearchField, evidenceByKey, isRoot]);
-
-const sortedFiles = useMemo(() => {
-  const sorted = [...filteredFiles].sort((a, b) => {
-    const aName = a.path.split('/').filter(Boolean).pop() || '';
-    const bName = b.path.split('/').filter(Boolean).pop() || '';
-    
-    // Folders always come first
-    const aIsFolder = a.path.endsWith('/');
-    const bIsFolder = b.path.endsWith('/');
-    if (aIsFolder !== bIsFolder) {
-      return aIsFolder ? -1 : 1;
-    }
-
-    // Get evidence data for sorting
-    const aEvidence = evidenceByKey.get(a.path) || evidenceByKey.get(aName);
-    const bEvidence = evidenceByKey.get(b.path) || evidenceByKey.get(bName);
-
-    let result = 0;
-
-    switch (fileSortKey) {
-      case 'name':{
-        result = aName.localeCompare(bName, undefined, { 
-          sensitivity: 'base',
-          numeric: true 
-        });
-        break;
-      }
-      
-      case 'evidence_number': {
-        const aEvidenceNum = aEvidence?.evidence_number || '';
-        const bEvidenceNum = bEvidence?.evidence_number || '';
-        result = aEvidenceNum.localeCompare(bEvidenceNum, undefined, {
-          sensitivity: 'base',
-          numeric: true
-        });
-        break;
-      }
-      
-      case 'description': {
-        const aDesc = aEvidence?.description || '';
-        const bDesc = bEvidence?.description || '';
-        result = aDesc.localeCompare(bDesc, undefined, { sensitivity: 'base' });
-        break;
-      }
-      
-      case 'uploaded': {
-        const aTime = aEvidence?.uploaded_at 
-          ? new Date(aEvidence.uploaded_at).getTime()
-          : a.lastModified?.getTime() || 0;
-        const bTime = bEvidence?.uploaded_at
-          ? new Date(bEvidence.uploaded_at).getTime()
-          : b.lastModified?.getTime() || 0;
-        result = aTime - bTime;
-        break;
-      }
-    }
-
-    return fileSortOrder === 'asc' ? result : -result;
-  });
-
-  return sorted;
-}, [filteredFiles, fileSortKey, fileSortOrder, evidenceByKey]);
-
-const handleFileSort = (key: FileSortKey) => {
-  if (fileSortKey === key) {
-    setFileSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
-  } else {
-    setFileSortKey(key);
-    setFileSortOrder('asc');
-  }
-};
-
-useEffect(() => {
-  setSearchValue('');
-}, [searchField, evidenceSearchField, isRoot]);
-  
   const rootFolderPrefix = identityId
   ? `private/${identityId}/`
   : null;
@@ -279,80 +134,6 @@ useEffect(() => {
     selectedFolders.length === 1 ||
     !!currentFolderPrefix ||
     !!rootFolderPrefix;  
-
-  // const showNotification = (message: string, type: 'error' | 'success' = 'error', duration = 4000) => {
-  //   setNotification({ message, type });
-  //   setTimeout(() => setNotification(null), duration);
-  // };
-
-  // Check if folder/case already exists (refreshed data)
-  // const folderExists = (folderName: string): boolean => {
-  //   if (isRoot) {
-  //     return cases.some(c => c.case_number.toLowerCase() === folderName.toLowerCase());
-  //   }
-  //   return files.some(f => f.path.toLowerCase() === `${currentPath}${folderName}/`.toLowerCase());
-  // };
-//   const createCase = useCallback(async (payload: any) => {
-//   const session = await fetchAuthSession();
-//   const token = session.tokens?.idToken?.toString();
-
-//   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-
-//   const res = await fetch(`${apiBaseUrl}/cases`, {
-//     method: "PUT",
-//     headers: {
-//       Authorization: `Bearer ${token}`,
-//       "Content-Type": "application/json",
-//     },
-//     body: JSON.stringify(payload),
-//   });
-
-//   if (!res.ok) {
-//     throw new Error(`Request failed: ${res.status}`);
-//   }
-
-//   return await res.json();
-// }, []);
-
-  // const isSingleFileSelected =
-  //   !!selectedFilePath && !selectedFilePath.endsWith("/");
-
-  // const loadCases = useCallback(async () => {
-  //   try {
-  //     const session = await fetchAuthSession();
-  //     const token = session.tokens?.idToken?.toString();
-
-  //     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-  //     console.log('apiBaseUrl: ', apiBaseUrl)
-  //     const res = await fetch(
-  //       `${apiBaseUrl}/cases`,
-  //       {
-  //         method: "GET",
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //           "Content-Type": "application/json"
-  //         },
-  //         // body: JSON.stringify(caseData)
-  //       },
-  //     );
-  //     if (!res.ok) {
-  //       throw new Error(`Request failed: ${res.status}`);
-  //     }
-    
-  //     const response = await res.json();
-  //     console.log('response: ', response)
-  //     setCases(response)
-  //     return response;
-  //   } catch (err) {
-  //     console.error('Error loading cases:', err);
-  //     return [];
-  //   }
-  // }, [])
-  
-
-  // useEffect(() => {
-  //   loadCases()
-  // }, [loadCases])
 
   /* ------------------ AUTH INIT ------------------ */
   useEffect(() => {
@@ -363,289 +144,97 @@ useEffect(() => {
     init();
   }, []);
 
-  function getFirstLevelItems(
-    items: any[],
-    basePath: string
-  ): any[] {
-    const map = new Map<string, any>();
-
-    for (const item of items) {
-      console.log('item: ', item)
-      const relative = item.path.replace(basePath, '');
-      console.log('relative: ', relative)
-      const parts = relative.split('/').filter(Boolean);
-      console.log('parts: ', parts)
-      if (parts.length === 1 && !item.path.endsWith('/')) {
-        map.set(item.path, item);
-        continue;
-      }
-
-      if (parts.length >= 1) {
-        const folderPath = basePath + parts[0] + '/';
-        if (!map.has(folderPath)) {
-          map.set(folderPath, {
-            path: folderPath,
-            eTag: '',
-          });
-        }
-      }
-    }
-    console.log('map: ', map)
-    return Array.from(map.values());
-  }
+ 
   const loadFiles = useCallback(async () => {
     if (!identityId) return;
 
-    setLoading(true);
-    setFiles([]);
-    setSelected(new Set());
+    // setLoading(true);
+    setFiles([])
+    setFilesLoading(true)
+    // setFiles([]);
+    // setSelected(new Set());
 
     try {
+      const items = []
       const basePath = `private/${identityId}/${currentPath}`;
-      console.log('base path: ', basePath)
-      const result = await list({ path: basePath });
-      console.log('result: ', result)
-      setFiles(getFirstLevelItems(result.items, basePath));
+      // console.log('base path: ', basePath)
+      // const result = await list({ path: basePath });
+      // console.log('resultttt: ', result)
+      const command = new ListObjectsV2Command({
+        Bucket: 'amplify-d1dgn0zrt9tb32-mai-mystoragebucket472d5355-sb6ffkrqvk1q',
+        Prefix: basePath,
+        Delimiter: '/'
+      });
+      // const s3 = await createS3Client();
+      const response = await s3Ref.current.send(command);
+     
+
+      for(const item of response.CommonPrefixes || []){
+        items.push({
+          Key: item.Prefix,
+          type: "folder"
+        })
+      }
+
+      for(const item of response.Contents || []){
+        // console.log('itemmmmmm: ', item)
+        if(item.Key == basePath) continue
+        items.push(item)
+      }
+      console.log('itemsssssssss: ', items)
+      const mergedItems = items.map((item) => {
+        if (item.type === "folder") {
+          return item; // folders don't have metadata
+        }
+
+        const fullKey = item.Key;
+        const fileName = fullKey?.split("/").pop();
+
+        // try full key first (most reliable)
+        const metadata =
+          evidenceByKey.get(fullKey) ||
+          evidenceByKey.get(fileName) ||
+          null;
+
+        return {
+          ...item,
+          ...metadata, // attach metadata object
+        };
+      });
+      console.log('mergedItemsssssss: ', mergedItems)
+      setFiles(mergedItems);
+      // setFiles(getFirstLevelItems(result.items, basePath));
     } catch (err) {
       console.error('Error listing files', err);
     } finally {
-      setLoading(false);
+      // setLoading(false);
+      setFilesLoading(false);
     }
-  }, [identityId, currentPath]);
+  }, [identityId, currentPath, evidenceByKey  ]);
 
   useEffect(() => {
     loadFiles();
   }, [loadFiles]);
-  const toggleSelect = (path: string) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(path) ? next.delete(path) : next.add(path);
-      return next;
-    });
-  };
+  
+  function handleRowClick(params: any) {
+    const row = params.row
+    setFiles([]);
+    setFilesLoading(true);   
+     
 
-  const toggleSelectAll = () => {
-    if (selected.size === files.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(files.map(f => f.path)));
+    let name: string;
+    if(viewMode === 'cases'){
+      name = row.case_number
+      setPathStack([`${name}/`]);
     }
-  };
-
-  useEffect(() => {
-    if (!selectAllRef.current) return;
-
-    selectAllRef.current.indeterminate =
-      selected.size > 0 && selected.size < files.length;
-  }, [selected, files]);
-
-  function formatBytes(bytes?: number) {
-    if (!bytes) return '—';
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
+    else{
+      name = row.name
+      setPathStack(prev => [...prev, `${name}/`]);
+    }
+    setSelected(new Set());
   }
 
-  const SortIcon = ({ active }: { active: boolean }) =>
-  active ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : null;
-
-  const CasesTableHeader = () => (
-    <thead>
-      <tr>
-        <th>
-          <input
-            ref={selectAllRef}
-            type="checkbox"
-            checked={selected.size === cases?.length && cases?.length > 0}
-            onChange={toggleSelectAll}
-          />
-        </th>
-        {/* <th>Case Number</th> */}
-        <th onClick={() => handleSort('case_number')} style={{ cursor: 'pointer' }}>
-          Case Number <SortIcon active={sortKey === 'case_number'} />
-        </th>
-        {/* <th>Case Title</th> */}
-        <th onClick={() => handleSort('case_title')} style={{ cursor: 'pointer' }}>
-          Case Title <SortIcon active={sortKey === 'case_title'} />
-        </th>
-        {/* <th>Case Agent</th> */}
-        <th onClick={() => handleSort('case_agents')} style={{ cursor: 'pointer' }}>
-          Case Agent <SortIcon active={sortKey === 'case_agents'} />
-        </th>
-        <th>Jurisdiction</th>
-        {/* <th>Size</th> */}
-        <th onClick={() => handleSort('size')} style={{ cursor: 'pointer' }}>
-          Size <SortIcon active={sortKey === 'size'} />
-        </th>
-
-      </tr>
-    </thead>
-  );
-  
-
-  const FilesTableHeader = () => (
-  <thead>
-    <tr>
-      <th>
-        <input
-          ref={selectAllRef}
-          type="checkbox"
-          checked={files.length > 0 && selected.size === files.length}
-          onChange={toggleSelectAll}
-        />
-      </th>
-      <th 
-        onClick={() => handleFileSort('name')} 
-        style={{ cursor: 'pointer' }}
-      >
-        Name {fileSortKey === 'name' && (fileSortOrder === 'asc' ? ' ▲' : ' ▼')}
-      </th>
-      <th 
-        onClick={() => handleFileSort('evidence_number')} 
-        style={{ cursor: 'pointer' }}
-      >
-        Evidence # {fileSortKey === 'evidence_number' && (fileSortOrder === 'asc' ? ' ▲' : ' ▼')}
-      </th>
-      <th 
-        onClick={() => handleFileSort('description')} 
-        style={{ cursor: 'pointer' }}
-      >
-        Description {fileSortKey === 'description' && (fileSortOrder === 'asc' ? ' ▲' : ' ▼')}
-      </th>
-      <th 
-        onClick={() => handleFileSort('uploaded')} 
-        style={{ cursor: 'pointer' }}
-      >
-        Uploaded / Last Modified {fileSortKey === 'uploaded' && (fileSortOrder === 'asc' ? ' ▲' : ' ▼')}
-      </th>
-      <th>Size</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-);
-
-
-
-  const renderCaseRow = (item: any) => {
-    const name = item.case_number;
-
-    return (
-      <tr
-        key={`${item.user_name}-${item.case_number}`}
-        className="folder"
-        style={{ cursor: 'pointer' }}
-        onClick={() => {
-          setSelected(new Set());
-          setPathStack([`${name}/`]);
-        }}
-      >
-        <td>
-          <input
-            type="checkbox"
-            checked={selected.has(item.source_key)}
-            onClick={e => e.stopPropagation()}
-            onChange={() => toggleSelect(item.source_key)}
-          />
-        </td>
-        <td>📁 {name}</td>
-        <td>{item.case_title}</td>
-        <td>{item.case_agents}</td>
-        <td>
-          {Array.isArray(item.jurisdiction) 
-            ? item.jurisdiction.join(', ') 
-            : item.jurisdiction || '—'}
-        </td>
-        <td>{formatBytes(item.size)}</td>
-      </tr>
-    );
-  };
-
-  const renderFileRow = (item: any) => {
-  const name = item.path.split('/').filter(Boolean).pop()!;
-  const isFolder = item.path.endsWith('/');
-
-  
-
-
-  const handleView = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'view');
-    console.log('url: ', url)
-    window.open(url, '_blank');
-  };
-
-  const handleDownload = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'download');
-    window.location.href = url;
-  };
-  
-  // Try to match evidence by full path first, then by filename
-  let evidence = evidenceByKey.get(item.path);
-  if (!evidence) {
-    evidence = evidenceByKey.get(name);
-  }
-
-  return (
-    <tr
-      key={item.path}
-      className={isFolder ? 'folder' : ''}
-      style={{ cursor: isFolder ? 'pointer' : 'default' }}
-      onClick={() =>
-        isFolder &&
-        setPathStack(prev => [...prev, `${name}/`])
-      }
-    >
-      <td>
-        <input
-          type="checkbox"
-          checked={selected.has(item.path)}
-          onClick={e => e.stopPropagation()}
-          onChange={() => toggleSelect(item.path)}
-        />
-      </td>
-
-      <td>{isFolder ? <FolderIcon color="primary" /> : '📄'} {name}</td>
-
-      <td>
-        {evidence ? evidence.evidence_number : '—'}
-      </td>
-
-      <td>
-        {evidence ? evidence.description : '—'}
-      </td>
-
-      <td>
-        {evidence?.uploaded_at
-          ? new Date(evidence.uploaded_at).toLocaleString()
-          : item.lastModified
-            ? item.lastModified.toLocaleString()
-            : '—'}
-      </td>
-
-      <td>{formatBytes(item.size)}</td>
-      <td>
-
-        {!isFolder && (
-          <>
-            <div style={{display: 'flex', justifyContent:"center", alignItems:"center", gap:"8px"}}>
-                <Tooltip title="View">
-                  <IconButton onClick={handleView} color="primary">
-                    <VisibilityIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Download">
-                  <IconButton onClick={handleDownload} color="secondary">
-                    <DownloadIcon />
-                  </IconButton>
-                </Tooltip>
-            </div>
-          </>
-        )}
-      </td>
-    </tr>
-  );
-};
+  // console.log('selectedRows: ', selectedRows)
 
   const [open, setOpen] = useState(false)
   const users = filteredUsers
@@ -654,6 +243,14 @@ useEffect(() => {
     const parts = path.split("/");
     return parts[parts.length - 2]; // "2026-0000003"
   };
+
+  useEffect(() => {
+  if (viewMode === "files") {
+    setFiles([]); // clear only when switching modes
+    setFilesLoading(true)
+  }
+}, [viewMode]);
+
 
   return (
     <>
@@ -667,7 +264,7 @@ useEffect(() => {
 
         <Flex gap="0.5rem">
 
-          <div className="search-bar">
+          {/* <div className="search-bar">
             <div className="search-select-wrapper">
               {isRoot ? (
                 <select
@@ -721,10 +318,10 @@ useEffect(() => {
                 </button>
               )}
             </div>
-          </div>
+          </div> */}
 
           {isRoot && (
-            <Button size='small' onClick={() => setOpen(true)} disabled={selected.size === 0}>
+            <Button size='small' onClick={() => setOpen(true)} disabled={selectedRows.length === 0}>
               Share
             </Button>
           )}
@@ -732,11 +329,11 @@ useEffect(() => {
             <ShareDialog
               open={open}
               users={users}
-              selectedFiles={selected}
+              selectedFiles={selectedRows}
               sharedTo={
-                selected.size === 1
+                selectedRows.length === 1
                   ? cases?.find(
-                      c => c.case_number === extractCaseNumber([...selected][0])
+                      c => c.case_number === extractCaseNumber([...selectedRows][0])
                     )?.shared_to
                   : []
               }
@@ -747,7 +344,7 @@ useEffect(() => {
 
               const selectedUsers = selected.users;
               const selectedFiles = selected.files;
-              console.log('selectedUsers: ', selectedUsers)
+              // console.log('selectedUsers: ', selectedUsers)
               for (const file of selectedFiles) {
                 const caseNumber = extractCaseNumber(file);
 
@@ -793,9 +390,9 @@ useEffect(() => {
                 }
               }
 
-              console.log('Shared case items:', items);
+              // console.log('Shared case items:', items);
               await shareCaseTo(items);
-              console.log('closing dialog')
+              // console.log('closing dialog')
               setOpen(false)
               toast.success('Success')
               // queryClient.invalidateQueries({ queryKey: ['cases'] })
@@ -811,13 +408,13 @@ useEffect(() => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           /> */}
-          <Button
+          {/* <Button
             size="small"
             onClick={loadFiles}
             isLoading={loading}
           >
             Refresh
-          </Button>
+          </Button> */}
 
           {isRoot && (<Button
             size="small"
@@ -830,7 +427,7 @@ useEffect(() => {
                 // setIsGeneratingLink(true);
                 // console.log('selectedFilesssssssssssssssssss: ', selected)
                 // const case_number = selected
-                 const selectedArray = Array.from(selected);
+                 const selectedArray = Array.from(selectedRows);
 
                     if (!selectedArray.length) return;
 
@@ -845,7 +442,7 @@ useEffect(() => {
                     // Case number is last segment
                     const case_number = parts[parts.length - 1];
 
-                    console.log("Extracted case number:", case_number);
+                    // console.log("Extracted case number:", case_number);
 
                     const link = `${window.location.origin}/access/${case_number}`;
 
@@ -933,13 +530,39 @@ useEffect(() => {
       </Flex>
       <Breadcrumbs 
         pathStack={pathStack}
-        onNavigate={(x: string[]) => setPathStack(x)}
+        onNavigate={(x: string[]) => {
+          setFiles([]);
+          setFilesLoading(true)
+          setPathStack(x)
+        }}
         onExitCase={() => {
-        setPathStack([]);
+          setFiles([]);
+          setFilesLoading(true)
+          setPathStack([]);
       }}
       />
-        {/* ================= ROOT = CASE LIST ================= */}
-        {isRoot && (
+
+      <CasesGrid
+        data={viewMode === "cases" ? cases || [] : files || []}
+        loading={viewMode === "cases" ? casesLoading : filesLoading}
+        handleRowClick={handleRowClick}
+        viewMode={viewMode}
+        handleSelected={(selected: any) => setSelectedRows(selected)}
+      />
+      
+      {/* <CasesGrid 
+        data={cases || []}
+        loading={cases}
+        handleRowClick={handleRowClick}
+        viewMode="cases"
+      />
+      <CasesGrid
+        data={files || []}
+        loading={files}
+        handleRowClick={handleRowClick}
+        viewMode="files"
+      /> */}
+        {/* {isRoot && (
           <table className="storage-table">
           {isRoot ? <CasesTableHeader /> : <FilesTableHeader />}
 
@@ -949,7 +572,6 @@ useEffect(() => {
           </table>
         )}
 
-        {/* ================= CASE = EVIDENCE + FILES ================= */}
         {!isRoot && pathStack.length === 1 && (
           <>
             {(isEvidenceLoading || isEvidenceFetching) && (
@@ -960,20 +582,19 @@ useEffect(() => {
             <table className="storage-table">
               <FilesTableHeader />
               <tbody>
-                {!loading && sortedFiles.map(renderFileRow)}
+                {!loading && files.map(f)}
               </tbody>
             </table>
           </>
         )}
-        {/* ================= SUBFOLDER = FILES ONLY ================= */}
         {!isRoot && pathStack.length > 1 && (
           <table className="storage-table">
             <FilesTableHeader />
             <tbody>
-              {!loading && sortedFiles.map(renderFileRow)}
+              {!loading && files.map(renderFileRow)}
             </tbody>
           </table>
-        )}
+        )} */}
     </>
   );
 };

@@ -50,7 +50,7 @@ type SharedTo = {
 type ShareDialogProps = {
   open: boolean;
   users?: User[];
-  selectedFiles: Set<string>;
+  selectedFiles: string[];
   sharedTo?: SharedTo[]; 
   onClose: () => void;
   onShare: (payload: SharePayload) => void;
@@ -89,10 +89,10 @@ useEffect(() => {
     })
     .filter(Boolean) as SharedUser[];
 
-  setSelectedUsers(hydrated);
-}, [open, sharedTo, users]);
+    setSelectedUsers(hydrated);
+  }, [open, sharedTo, users]);
 
-    console.log('selectedFilessss: ', selectedFiles)
+    
   const handleUserChange = (_: any, users: User[]) => {
     setSelectedUsers((prev) => {
       const map = new Map(prev.map(u => [u.user_name, u]));
@@ -239,7 +239,7 @@ useEffect(() => {
                             }
                           />
                         }
-                        label="Write"
+                        label="Update"
                       />
                     </Stack>
                   </Stack>

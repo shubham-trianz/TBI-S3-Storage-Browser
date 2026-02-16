@@ -1,5 +1,5 @@
 // import { list } from 'aws-amplify/storage';
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 // import { fetchAuthSession } from 'aws-amplify/auth';
 import {
   Flex,
@@ -20,6 +20,7 @@ import { FileViewDownloadAPI } from '../../api/viewdownload';
 import { IconButton, Tooltip } from '@mui/material';
 import DownloadIcon from "@mui/icons-material/Download";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import { CreateFolder } from '../utils/CreateFolder';
 // import { useCases 
 // } from '../../hooks/cases';
 // type CaseItem = {
@@ -32,6 +33,9 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 //   size?: number;
 // };
 
+import CasesGrid from '../utils/CaseTable';
+
+
 export const Received = () => {
     const { user_name } = useUser()
 
@@ -39,10 +43,23 @@ export const Received = () => {
   // const caseId = params.get('caseId')
   // console.log('caseId: ', caseId)
 
-  const {data: receivedCases} = useReceivedCases(user_name)
-  console.log('receivedCases: ', receivedCases)
-  const cases = receivedCases?.cases
   // const [files, setFiles] = useState<any[]>([]);
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  // const [casesLoading, setCasesLoading] = useState(true);
+  const [filesLoading, setFilesLoading] = useState(true);
+  // const viewMode = isRoot ? "cases" : "files";
+
+
+  const {data: receivedCases, isLoading: casesLoading} = useReceivedCases(user_name)
+  console.log('receivedCases: ', receivedCases)
+  const cases = receivedCases?.cases;
+
+// useEffect(() => {
+//   if (receivedCases) {
+//     setCasesLoading(false);
+//   }
+// }, [receivedCases]);
+  const [files, setFiles] = useState<any[]>([]);
   const [baseKey, setBaseKey] = useState<string | null>(null); // case root
   const [activeCase, setActiveCase] = useState<null | {
     caseNumber: string;
@@ -86,6 +103,8 @@ export const Received = () => {
     return map;
   }, [evidenceData]);
 
+  
+
   console.log('evidenceData: ', evidenceData);
   console.log('evidenceByKey: ', evidenceByKey);
 
@@ -99,18 +118,20 @@ export const Received = () => {
   // ? `${baseKey}${pathStack.length ? pathStack.join('/') + '/' : ''}`
   // : null;
   const currentPrefix = normalizedBaseKey
-  ? `${normalizedBaseKey}${pathStack.length ? pathStack.join('/') + '/' : ''}`
+  ? `${normalizedBaseKey}${pathStack.length ? pathStack.join('')  : ''}`
   : null;
   console.log('currentPrefix: ', currentPrefix)
   console.log('pathStack: ', pathStack)
-  const { data: files=[]} = useListS3Objects(currentPrefix);
-  console.log('objectssssss: ', files)
+  const { data: receivedFiles} = useListS3Objects(currentPrefix);
+  console.log('objectssssssssssssssssssssss: ', receivedFiles)
   // useEffect(() => setFiles(objects), [currentPrefix])
   console.log('currentPath: ', currentPath)
   // const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
   // const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   // const isRoot = pathStack.length === 0;
   const isRoot = baseKey === null;
+  const viewMode = isRoot ? "received" : "files";
+
   // const isFilesRoot = baseKey !== null && pathStack.length === 0;
 
   // const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
@@ -141,24 +162,24 @@ export const Received = () => {
   ];
 
   // type SortKey = 'case_number' | 'case_title' | 'case_agents' | 'size';
-  type SortOrder = 'asc' | 'desc';
+  // type SortOrder = 'asc' | 'desc';
 
   // const [sortKey, setSortKey] = useState<SortKey>('case_number');
   // const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   
-  const filteredCases = useMemo(() => {
-    if (!cases || !Array.isArray(cases)) return [];
-    if (!searchValue.trim()) return cases;
+  // const filteredCases = useMemo(() => {
+  //   if (!cases || !Array.isArray(cases)) return [];
+  //   if (!searchValue.trim()) return cases;
 
-    const q = searchValue.toLowerCase();
+  //   const q = searchValue.toLowerCase();
 
-    return cases?.filter(item =>
-      String(item[searchField] ?? '')
-        .toLowerCase()
-        .includes(q)
-    );
-  }, [cases, searchField, searchValue]);
+  //   return cases?.filter(item =>
+  //     String(item[searchField] ?? '')
+  //       .toLowerCase()
+  //       .includes(q)
+  //   );
+  // }, [cases, searchField, searchValue]);
 
 
 //   const sortedCases = useMemo(() => {
@@ -193,109 +214,109 @@ export const Received = () => {
 // };
 
 // File sorting and filtering with evidence metadata
-type FileSortKey = 'name' | 'evidence_number' | 'description' | 'uploaded';
-const [fileSortKey, setFileSortKey] = useState<FileSortKey>('name');
-const [fileSortOrder, setFileSortOrder] = useState<SortOrder>('asc');
+// type FileSortKey = 'name' | 'evidence_number' | 'description' | 'uploaded';
+// const [fileSortKey, setFileSortKey] = useState<FileSortKey>('name');
+// const [fileSortOrder, setFileSortOrder] = useState<SortOrder>('asc');
 
-const filteredFiles = useMemo(() => {
-  if (!searchValue.trim() || isRoot) return files;
+// const filteredFiles = useMemo(() => {
+//   if (!searchValue.trim() || isRoot) return files;
 
-  const q = searchValue.toLowerCase();
+//   const q = searchValue.toLowerCase();
 
-  return files.filter(item => {
-    const name = item.path.split('/').filter(Boolean).pop() || '';
-    const evidence = evidenceByKey.get(item.path) || evidenceByKey.get(name);
+//   return files.filter(item => {
+//     const name = item.path.split('/').filter(Boolean).pop() || '';
+//     const evidence = evidenceByKey.get(item.path) || evidenceByKey.get(name);
 
-    switch (evidenceSearchField) {
-      case 'name':
-        return name.toLowerCase().includes(q);
+//     switch (evidenceSearchField) {
+//       case 'name':
+//         return name.toLowerCase().includes(q);
       
-      case 'evidence_number':
-        return evidence?.evidence_number?.toLowerCase().includes(q) || false;
+//       case 'evidence_number':
+//         return evidence?.evidence_number?.toLowerCase().includes(q) || false;
       
-      case 'description':
-        return evidence?.description?.toLowerCase().includes(q) || false;
+//       case 'description':
+//         return evidence?.description?.toLowerCase().includes(q) || false;
       
-      default:
-        return false;
-    }
-  });
-}, [files, searchValue, evidenceSearchField, evidenceByKey, isRoot]);
+//       default:
+//         return false;
+//     }
+//   });
+// }, [files, searchValue, evidenceSearchField, evidenceByKey, isRoot]);
 
-const sortedFiles = useMemo(() => {
-  const sorted = [...filteredFiles].sort((a, b) => {
-    const aName = a.path.split('/').filter(Boolean).pop() || '';
-    const bName = b.path.split('/').filter(Boolean).pop() || '';
+// const sortedFiles = useMemo(() => {
+//   const sorted = [...filteredFiles].sort((a, b) => {
+//     const aName = a.path.split('/').filter(Boolean).pop() || '';
+//     const bName = b.path.split('/').filter(Boolean).pop() || '';
     
-    // Folders always come first
-    const aIsFolder = a.path.endsWith('/');
-    const bIsFolder = b.path.endsWith('/');
-    if (aIsFolder !== bIsFolder) {
-      return aIsFolder ? -1 : 1;
-    }
+//     // Folders always come first
+//     const aIsFolder = a.path.endsWith('/');
+//     const bIsFolder = b.path.endsWith('/');
+//     if (aIsFolder !== bIsFolder) {
+//       return aIsFolder ? -1 : 1;
+//     }
 
-    // Get evidence data for sorting
-    const aEvidence = evidenceByKey.get(a.path) || evidenceByKey.get(aName);
-    const bEvidence = evidenceByKey.get(b.path) || evidenceByKey.get(bName);
+//     // Get evidence data for sorting
+//     const aEvidence = evidenceByKey.get(a.path) || evidenceByKey.get(aName);
+//     const bEvidence = evidenceByKey.get(b.path) || evidenceByKey.get(bName);
 
-    let result = 0;
+//     let result = 0;
 
-    switch (fileSortKey) {
-      case 'name': {
-        result = aName.localeCompare(bName, undefined, { 
-          sensitivity: 'base',
-          numeric: true 
-        });
-        break;
-      }
+//     switch (fileSortKey) {
+//       case 'name': {
+//         result = aName.localeCompare(bName, undefined, { 
+//           sensitivity: 'base',
+//           numeric: true 
+//         });
+//         break;
+//       }
       
-      case 'evidence_number': {
-        const aEvidenceNum = aEvidence?.evidence_number || '';
-        const bEvidenceNum = bEvidence?.evidence_number || '';
-        result = aEvidenceNum.localeCompare(bEvidenceNum, undefined, {
-          sensitivity: 'base',
-          numeric: true
-        });
-        break;
-      }
+//       case 'evidence_number': {
+//         const aEvidenceNum = aEvidence?.evidence_number || '';
+//         const bEvidenceNum = bEvidence?.evidence_number || '';
+//         result = aEvidenceNum.localeCompare(bEvidenceNum, undefined, {
+//           sensitivity: 'base',
+//           numeric: true
+//         });
+//         break;
+//       }
       
-      case 'description': {
-        const aDesc = aEvidence?.description || '';
-        const bDesc = bEvidence?.description || '';
-        result = aDesc.localeCompare(bDesc, undefined, { sensitivity: 'base' });
-        break;
-      }
+//       case 'description': {
+//         const aDesc = aEvidence?.description || '';
+//         const bDesc = bEvidence?.description || '';
+//         result = aDesc.localeCompare(bDesc, undefined, { sensitivity: 'base' });
+//         break;
+//       }
       
-      case 'uploaded': {
-        const aTime = aEvidence?.uploaded_at 
-          ? new Date(aEvidence.uploaded_at).getTime() 
-          : 0;
-        const bTime = bEvidence?.uploaded_at 
-          ? new Date(bEvidence.uploaded_at).getTime() 
-          : 0;
-        result = aTime - bTime;
-        break;
-      }
-    }
+//       case 'uploaded': {
+//         const aTime = aEvidence?.uploaded_at 
+//           ? new Date(aEvidence.uploaded_at).getTime() 
+//           : 0;
+//         const bTime = bEvidence?.uploaded_at 
+//           ? new Date(bEvidence.uploaded_at).getTime() 
+//           : 0;
+//         result = aTime - bTime;
+//         break;
+//       }
+//     }
 
-    return result;
-  });
+//     return result;
+//   });
 
-  return fileSortOrder === 'asc' ? sorted : sorted.reverse();
-}, [filteredFiles, fileSortKey, fileSortOrder, evidenceByKey]);
+//   return fileSortOrder === 'asc' ? sorted : sorted.reverse();
+// }, [filteredFiles, fileSortKey, fileSortOrder, evidenceByKey]);
 
-const handleFileSort = (key: FileSortKey) => {
-  if (fileSortKey === key) {
-    setFileSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
-  } else {
-    setFileSortKey(key);
-    setFileSortOrder('asc');
-  }
-};
+// const handleFileSort = (key: FileSortKey) => {
+//   if (fileSortKey === key) {
+//     setFileSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+//   } else {
+//     setFileSortKey(key);
+//     setFileSortOrder('asc');
+//   }
+// };
 
-useEffect(() => {
-  setSearchValue('');
-}, [searchField, evidenceSearchField]);
+// useEffect(() => {
+//   setSearchValue('');
+// }, [searchField, evidenceSearchField]);
   
   // const rootFolderPrefix = identityId
   // ? `private/${identityId}/`
@@ -317,96 +338,91 @@ useEffect(() => {
   //   init();
   // }, []);
 
+  const filesList = useMemo(() => {
+  return receivedFiles ?? [];
+}, [receivedFiles]);
 
+  // const loadFiles = useCallback(async () => {
+  //     // setLoading(true);
+  //     setFiles([])
+  //     setFilesLoading(true)
+  
+  //     try {
+  //       console.log('fillllllllllllllllllllll: ', receivedFiles)
+  //       const mergedItems = receivedFiles.map((item) => {
+          
+  //         if (item.type === "folder") {
+  //           return item; // folders don't have metadata
+  //         }
+  
+  //         const fullKey = item.Key;
+  //         const fileName = fullKey?.split("/").pop();
+  
+  //         // try full key first (most reliable)
+  //         const metadata =
+  //           evidenceByKey.get(fullKey) ||
+  //           evidenceByKey.get(fileName) ||
+  //           null;
+  
+  //         return {
+  //           ...item,
+  //           ...metadata, // attach metadata object
+  //         };
+  //       });
+  //       console.log('mergedItemsssssss: ', mergedItems)
+  //       setFiles(mergedItems);
+  //       // setFiles(getFirstLevelItems(result.items, basePath));
+  //     } catch (err) {
+  //       console.error('Error listing files', err);
+  //     } finally {
+  //       // setLoading(false);
+  //       setFilesLoading(false);
+  //     }
+  //   }, [filesList, evidenceByKey,  ]);
+  
+  //   useEffect(() => {
+  //     loadFiles();
+  //   }, [loadFiles]);
+  
+  useEffect(() => {
+  if (!receivedFiles) return;
+
+  setFilesLoading(true);
+
+  try {
+    console.log('receivedFilessssssssssss: ', receivedFiles)
+    const mergedItems = receivedFiles.map((item) => {
+      if (item.type === "folder") return item;
+
+      const fullKey = item.Key;
+      const fileName = fullKey?.split("/").pop();
+      console.log('fullKey: ', fullKey)
+      console.log('fileName: ', fileName)
+      const metadata =
+        evidenceByKey.get(fullKey) ||
+        evidenceByKey.get(fileName) ||
+        null;
+      console.log('metadataaa: ', metadata)
+      return {
+        ...item,
+        ...metadata,
+      };
+    });
+    console.log('mergedItemssssssssss: ', mergedItems)
+    setFiles(mergedItems);
+  } catch (err) {
+    console.error("Error listing files", err);
+  } finally {
+    setFilesLoading(false);
+  }
+}, [receivedFiles, evidenceByKey, currentPath]);
+  console.log('myyyyyyyyyyfiless: ', files)
   const formatBytes = (bytes?: number) =>
     bytes
       ? `${(bytes / 1024 / 1024).toFixed(2)} MB`
       : '—';
 
-  const toggleSelect = (path: string) => {
-    setSelected(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(path)) {
-        newSet.delete(path);
-      } else {
-        newSet.add(path);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (selected.size === files.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(files.map((f: any) => f.path)));
-    }
-  };
-
-
-  const SharedCasesTableHeader = () => (
-    <thead>
-      <tr>
-        <th>
-          <input
-            ref={selectAllRef}
-            type="checkbox"
-            checked={selected.size === receivedCases?.cases?.length && receivedCases?.cases?.length > 0}
-            onChange={toggleSelectAll}
-          />
-        </th>
-        <th>Case Number</th>
-        <th>Case Title</th>
-        <th>Owner</th>
-        <th>Jurisdiction</th>
-        <th>Size</th>
-        <th>Permission</th>
-        <th>Shared At</th>
-      </tr>
-    </thead>
-  );
-
-  const FilesTableHeader = () => (
-    <thead>
-      <tr>
-        <th>
-          <input
-            ref={selectAllRef}
-            type="checkbox"
-            checked={files.length > 0 && selected.size === files.length}
-            onChange={toggleSelectAll}
-          />
-        </th>
-        <th 
-          onClick={() => handleFileSort('name')}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Name {fileSortKey === 'name' && (fileSortOrder === 'asc' ? '↑' : '↓')}
-        </th>
-        <th 
-          onClick={() => handleFileSort('evidence_number')}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Evidence {fileSortKey === 'evidence_number' && (fileSortOrder === 'asc' ? '↑' : '↓')}
-        </th>
-        <th 
-          onClick={() => handleFileSort('description')}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Description {fileSortKey === 'description' && (fileSortOrder === 'asc' ? '↑' : '↓')}
-        </th>
-        <th>Type</th>
-        <th 
-          onClick={() => handleFileSort('uploaded')}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Uploaded {fileSortKey === 'uploaded' && (fileSortOrder === 'asc' ? '↑' : '↓')}
-        </th>
-        <th>Size</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-  );
+  
 
   const removeLastPathSegment = (key: string) => {
   if (!key) return key;
@@ -415,140 +431,170 @@ useEffect(() => {
   return normalized.substring(0, normalized.lastIndexOf('/') + 1);
 };
 
-  
-  const renderSharedCaseRow = (item: any) => {
-  let name = item.case_number;
-  name = name.replace('CASE#', '')
+function handleRowClick(params: any) {
+    const row = params.row
+    console.log('rows: ', row)
+    // setFiles([]);
+    setFilesLoading(true);   
+    
 
-  return (
-    <tr
-      key={item.case_number}
-      className="folder"
-      style={{ cursor: 'pointer' }}
-      onClick={() => {
-        setSelected(new Set());
-        setActiveCase({
-          caseNumber: item.case_number.replace('CASE#', ''),
-          canWrite: item.permissions?.write === true, // or however you get this
-        });
-        setBaseKey(
-          removeLastPathSegment(item.source_key)
+
+    let name: string;
+    if(viewMode === 'received'){
+      name = row.case_number
+      // setPathStack([`${name}/`]);
+      setBaseKey(
+          removeLastPathSegment(row.source_key)
         );
+        setPathStack([`${row.case_number}/`]);
+    }
+    else{
+      name = row.name
+      setPathStack(prev => [...prev, `${name}/`]);
+    }
+    setSelected(new Set());
+  }
 
-        // 🔄 reset navigation
-        setPathStack([`${item.case_number.replace('CASE#', '')}`]);
-        // const { data: objects } = useListS3Objects(item.source_key)
-      }}
-    >
-      <td>
-        <input
-          type="checkbox"
-          checked={selected.has(item.source_key)}
-          onClick={e => e.stopPropagation()}
-          onChange={() => toggleSelect(item.source_key)}
-        />
-      </td>
-
-      <td>📁 {name}</td>
-
-      <td>{item.case_title}</td>
-
-      <td>{item.owner_email}</td>
-
-      <td>
-        {Array.isArray(item.jurisdiction) 
-          ? item.jurisdiction.join(', ') 
-          : item.jurisdiction || '—'}
-      </td>
-
-      <td>{formatBytes(item.size)}</td>
-
-      <td>
-        {item.permissions?.write
-          ? 'Read / Write'
-          : 'Read'}
-      </td>
-
-      <td>
-        {new Date(item.shared_at).toLocaleString()}
-      </td>
-    </tr>
-  );
-};
-
-  const renderFileRow = (item: any) => {
-    const name = item.path.split('/').filter(Boolean).pop()!;
-    const isFolder = item.path.endsWith('/');
-
-    const handleView = async (e: React.MouseEvent) => {
-      e.stopPropagation();
-      const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'view');
-      console.log('url: ', url)
-      window.open(url, '_blank');
-    };
+  // useEffect(() => {
+    
+  //   if(cases && cases?.length > 0){
+  //     setCasesLoading(false)
+  //   }
+  // }, [cases])
   
-    const handleDownload = async (e: React.MouseEvent) => {
-      e.stopPropagation();
-      const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'download');
-      window.location.href = url;
-    };
-    // Get evidence metadata
-    const evidence = evidenceByKey.get(item.path) || evidenceByKey.get(name);
+//   const renderSharedCaseRow = (item: any) => {
+//   let name = item.case_number;
+//   name = name.replace('CASE#', '')
 
-    return (
-      <tr
-        key={item.path}
-        className={isFolder ? 'folder' : ''}
-        style={{ cursor: isFolder ? 'pointer' : 'default' }}
-        onClick={() =>{
-          if (!isFolder) return;
+//   return (
+//     <tr
+//       key={item.case_number}
+//       className="folder"
+//       style={{ cursor: 'pointer' }}
+//       onClick={() => {
+//         setSelected(new Set());
+//         setActiveCase({
+//           caseNumber: item.case_number.replace('CASE#', ''),
+//           canWrite: item.permissions?.write === true, // or however you get this
+//         });
+        // setBaseKey(
+        //   removeLastPathSegment(item.source_key)
+        // );
 
-        // ➕ navigate deeper
-          setPathStack(prev => [...prev, name]);
-        }}
-      >
-        <td>
-          <input
-            type="checkbox"
-            checked={selected.has(item.path)}
-            onClick={e => e.stopPropagation()}
-            onChange={() => toggleSelect(item.path)}
-          />
-        </td>
-        <td>{isFolder ? '📁' : '📄'} {name}</td>
-        <td>{evidence?.evidence_number || '—'}</td>
-        <td>{evidence?.description || '—'}</td>
-        <td>{isFolder ? 'Folder' : 'File'}</td>
-        <td>{isFolder ? '—' : formatBytes(item.size)}</td>
-        <td>
-          {evidence?.uploaded_at 
-            ? new Date(evidence.uploaded_at).toLocaleString()
-            : item.lastModified
-            ? item.lastModified.toLocaleString()
-            : '—'}
-        </td>
-        <td>
+//         // 🔄 reset navigation
+//         setPathStack([`${item.case_number.replace('CASE#', '')}`]);
+//         // const { data: objects } = useListS3Objects(item.source_key)
+//       }}
+//     >
+//       <td>
+//         <input
+//           type="checkbox"
+//           checked={selected.has(item.source_key)}
+//           onClick={e => e.stopPropagation()}
+//           onChange={() => toggleSelect(item.source_key)}
+//         />
+//       </td>
+
+//       <td>📁 {name}</td>
+
+//       <td>{item.case_title}</td>
+
+//       <td>{item.owner_email}</td>
+
+//       <td>
+//         {Array.isArray(item.jurisdiction) 
+//           ? item.jurisdiction.join(', ') 
+//           : item.jurisdiction || '—'}
+//       </td>
+
+//       <td>{formatBytes(item.size)}</td>
+
+//       <td>
+//         {item.permissions?.write
+//           ? 'Read / Write'
+//           : 'Read'}
+//       </td>
+
+//       <td>
+//         {new Date(item.shared_at).toLocaleString()}
+//       </td>
+//     </tr>
+//   );
+// };
+
+  // const renderFileRow = (item: any) => {
+  //   const name = item.path.split('/').filter(Boolean).pop()!;
+  //   const isFolder = item.path.endsWith('/');
+
+  //   const handleView = async (e: React.MouseEvent) => {
+  //     e.stopPropagation();
+  //     const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'view');
+  //     console.log('url: ', url)
+  //     window.open(url, '_blank');
+  //   };
   
-          {!isFolder && (
-            <>
-              <div style={{display: 'flex', alignItems: 'center'}}>
-                  <Tooltip title="View">
-                    <IconButton onClick={handleView} color="primary">
-                      <VisibilityIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Download">
-                    <IconButton onClick={handleDownload} color="secondary">
-                      <DownloadIcon />
-                    </IconButton>
-                  </Tooltip>
-              </div>
-            </>
-          )}
-        </td>
-      </tr>
-    );
-  };
+  //   const handleDownload = async (e: React.MouseEvent) => {
+  //     e.stopPropagation();
+  //     const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'download');
+  //     window.location.href = url;
+  //   };
+  //   // Get evidence metadata
+  //   const evidence = evidenceByKey.get(item.path) || evidenceByKey.get(name);
+
+  //   return (
+  //     <tr
+  //       key={item.path}
+  //       className={isFolder ? 'folder' : ''}
+  //       style={{ cursor: isFolder ? 'pointer' : 'default' }}
+  //       onClick={() =>{
+  //         if (!isFolder) return;
+
+  //       // ➕ navigate deeper
+  //         setPathStack(prev => [...prev, name]);
+  //       }}
+  //     >
+  //       <td>
+  //         <input
+  //           type="checkbox"
+  //           checked={selected.has(item.path)}
+  //           onClick={e => e.stopPropagation()}
+  //           onChange={() => toggleSelect(item.path)}
+  //         />
+  //       </td>
+  //       <td>{isFolder ? '📁' : '📄'} {name}</td>
+  //       <td>{evidence?.evidence_number || '—'}</td>
+  //       <td>{evidence?.description || '—'}</td>
+  //       <td>{isFolder ? 'Folder' : 'File'}</td>
+  //       <td>{isFolder ? '—' : formatBytes(item.size)}</td>
+  //       <td>
+  //         {evidence?.uploaded_at 
+  //           ? new Date(evidence.uploaded_at).toLocaleString()
+  //           : item.lastModified
+  //           ? item.lastModified.toLocaleString()
+  //           : '—'}
+  //       </td>
+  //       <td>
+  
+  //         {!isFolder && (
+  //           <>
+  //             <div style={{display: 'flex', alignItems: 'center'}}>
+  //                 <Tooltip title="View">
+  //                   <IconButton onClick={handleView} color="primary">
+  //                     <VisibilityIcon />
+  //                   </IconButton>
+  //                 </Tooltip>
+  //                 <Tooltip title="Download">
+  //                   <IconButton onClick={handleDownload} color="secondary">
+  //                     <DownloadIcon />
+  //                   </IconButton>
+  //                 </Tooltip>
+  //             </div>
+  //           </>
+  //         )}
+  //       </td>
+  //     </tr>
+  //   );
+  // };
 
   return (
     <>
@@ -561,7 +607,7 @@ useEffect(() => {
 
         <Flex gap="0.5rem">
 
-          <div className="search-bar">
+          {/* <div className="search-bar">
             <div className="search-select-wrapper">
               <select
                 className="search-select"
@@ -607,7 +653,7 @@ useEffect(() => {
                 </button>
               )}
             </div>
-          </div>
+          </div> */}
 
           {/* <Button
             size="small"
@@ -671,49 +717,39 @@ useEffect(() => {
       <Divider />
 
       
+     
+
       <Breadcrumbs 
-        onExitCase={() => {
-        setBaseKey(null);
-        setPathStack([]);
-        setActiveCase(null);
-      }}
         pathStack={pathStack}
-        onNavigate={(x: string[]) => setPathStack(x)}
+        onNavigate={(x: string[]) => {
+          // setFiles([]);
+          setFilesLoading(true)
+          setPathStack(x)
+        }}
+        onExitCase={() => {
+          setFiles([]);
+          setBaseKey(null);
+          setFilesLoading(true)
+          setPathStack([]);
+      }}/>
+
+      <CasesGrid
+        data={viewMode === "received" ? cases || [] : files || []}
+        loading={viewMode === "received" ? casesLoading : filesLoading}
+        handleRowClick={handleRowClick}
+        viewMode={viewMode}
+        handleSelected={(selected: any) => setSelectedRows(selected)}
       />
 
-      {/* Show loading indicator for evidence metadata */}
+      
+
       {!isRoot && pathStack.length === 1 && (isEvidenceLoading || isEvidenceFetching) && (
         <div style={{ padding: '1rem', textAlign: 'center', background: '#f0f0f0' }}>
           Loading evidence metadata...
         </div>
       )}
 
-      <table className="storage-table">
-        {isRoot ? (
-          <SharedCasesTableHeader />
-        ) : (
-          <FilesTableHeader />
-        )}
-
-        <tbody>
-          {/* {loading && (
-            <tr className="loading-row">
-              <td colSpan={5}>Loading…</td>
-            </tr>
-          )} */}
-
-          {/* {!loading && cases?.length === 0 && (
-            <tr className="loading-row">
-              <td colSpan={5}>Empty folder</td>
-            </tr>
-          )} */}
-
-          {/* {!loading && isRoot && receivedCases?.cases?.map(renderSharedCaseRow)} */}
-          {isRoot && filteredCases?.map(renderSharedCaseRow)}
-          {/* {!loading && !isRoot && files.map(renderFileRow)} */}
-          {!isRoot && sortedFiles.map(renderFileRow)}
-        </tbody>
-      </table>
+          
     </>
   );
 };

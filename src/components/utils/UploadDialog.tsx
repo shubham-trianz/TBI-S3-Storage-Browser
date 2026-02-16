@@ -100,7 +100,13 @@ export function UploadDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={(reason) => {
+        if(reason == 'backdropClick') return
+        onClose()
+      }} 
+      maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 600 }}>
         Upload Evidence
       </DialogTitle>
