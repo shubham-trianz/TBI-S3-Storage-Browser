@@ -219,6 +219,7 @@ export const ExternalLoginPage = () => {
                   Email Address
                 </Text>
                 <TextField
+                  label="Email"
                   placeholder="Enter your email"
                   type="email"
                   value={email}
@@ -265,6 +266,7 @@ export const ExternalLoginPage = () => {
                   Enter the 6-digit code sent to <strong>{email}</strong>
                 </Text>
                 <TextField
+                  label="OTP"
                   placeholder="000000"
                   type="text"
                   value={otp}
