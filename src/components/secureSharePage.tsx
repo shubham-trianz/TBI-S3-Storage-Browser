@@ -21,7 +21,6 @@ import {
   Music,
   FileCode,
   Download,
-  Calendar,
   HardDrive,
   Hash,
   FileCheck,
@@ -31,7 +30,6 @@ import {
   Users,
   MapPin,
 } from "lucide-react";
-import { CasesAPI } from "../api/cases/cases.api";
 import { Case, EvidenceItem } from "../api/cases/cases.types";
 import logo from "../assets/logo.png";
 
@@ -64,7 +62,7 @@ export const SecureSharePage = () => {
   // Case and Evidence metadata
   const [caseMetadata, setCaseMetadata] = useState<Case | null>(null);
   const [evidenceMetadata, setEvidenceMetadata] = useState<Map<string, EvidenceItem>>(new Map());
-  const [metadataLoading, setMetadataLoading] = useState(false);
+  // const [metadataLoading, setMetadataLoading] = useState(false);
 
   // 🔐 Track if expiration warning was shown
   const warningShownRef = useRef(false);
@@ -243,7 +241,7 @@ export const SecureSharePage = () => {
       }
 
       try {
-        setMetadataLoading(true);
+        // setMetadataLoading(true);
         console.log("Fetching metadata for case:", caseNumber);
 
         const token = localStorage.getItem('external_access_token');
@@ -279,6 +277,7 @@ export const SecureSharePage = () => {
                 user_name: shareData.owner || '',
                 source_key: shareData.file || '',
                 size: 0,
+                shared_to: shareData.shared_to || [],
               };
               setCaseMetadata(caseData);
             }
@@ -324,7 +323,7 @@ export const SecureSharePage = () => {
       } catch (err) {
         console.error("Error fetching metadata:", err);
       } finally {
-        setMetadataLoading(false);
+        // setMetadataLoading(false);
       }
     };
 
