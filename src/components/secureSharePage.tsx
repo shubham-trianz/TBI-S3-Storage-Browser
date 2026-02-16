@@ -58,7 +58,9 @@ export const SecureSharePage = () => {
   const [expandedFolders, setExpandedFolders] = useState<FolderState>({});
   const [isExpired, setIsExpired] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
+  const [isAccessDenied, setIsAccessDenied] = useState(false);
+  const [isAccessChecking, setIsAccessChecking] = useState(true);
+
   // Case and Evidence metadata
   const [caseMetadata, setCaseMetadata] = useState<Case | null>(null);
   const [evidenceMetadata, setEvidenceMetadata] = useState<Map<string, EvidenceItem>>(new Map());
@@ -152,6 +154,48 @@ export const SecureSharePage = () => {
     
     checkAuth();
   }, [navigate]);
+
+  // 🔐 Validate share access before loading content
+useEffect(() => {
+  const validateAccess = async () => {
+    if (!isAuthenticated || !prefix) return;
+
+    try {
+      setIsAccessChecking(true);
+
+      const token = localStorage.getItem("external_access_token");
+
+      const res = await fetch(
+        `${API_BASE}/external-share-info?prefix=${encodeURIComponent(prefix)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Access denied");
+      }
+
+      setIsAccessDenied(false);
+    } catch (err) {
+      console.error("Access validation failed:", err);
+
+      // Clear session immediately
+      localStorage.removeItem("external_access_token");
+      localStorage.removeItem("external_token_expiry");
+      localStorage.removeItem("external_user_email");
+
+      setIsAccessDenied(true);
+    } finally {
+      setIsAccessChecking(false);
+    }
+  };
+
+  validateAccess();
+}, [isAuthenticated, prefix]);
+
   
   // Extract case number from prefix
   const extractCaseNumber = (prefixStr: string | null): string | null => {
@@ -341,7 +385,7 @@ export const SecureSharePage = () => {
         const token = localStorage.getItem('external_access_token');
 
         const res = await fetch(
-          `${API_BASE}/list-s3-objects?prefix=${encodeURIComponent(prefix)}`,
+          `${API_BASE}/list-s3-objects?prefix=${encodeURIComponent(prefix)}&responseMode=grouped`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -693,6 +737,65 @@ export const SecureSharePage = () => {
   };
 
   const currentEvidence = selectedFile ? getEvidenceForFile(selectedFile.key) : null;
+  if (isAccessChecking) {
+  return (
+    <Flex
+      direction="column"
+      justifyContent="center"
+      alignItems="center"
+      style={{ height: "100vh" }}
+    >
+      <Loader size="large" />
+      <Text>Validating access...</Text>
+    </Flex>
+  );
+}
+if (isAccessDenied) {
+  return (
+    <Flex
+      direction="column"
+      justifyContent="center"
+      alignItems="center"
+      style={{
+        height: "100vh",
+        backgroundColor: "#f9fafb",
+        padding: "2rem",
+      }}
+    >
+      <Card
+        variation="outlined"
+        style={{
+          maxWidth: "500px",
+          padding: "3rem",
+          textAlign: "center",
+        }}
+      >
+        <Flex direction="column" gap="1.5rem" alignItems="center">
+          <img
+            src={logo}
+            alt="Logo"
+            style={{
+              height: "64px",
+              objectFit: "contain",
+            }}
+          />
+          <Heading level={3} style={{ margin: 0 }}>
+            Access Denied
+          </Heading>
+          <Text color="#6b7280">
+            You do not have permission to access this shared content.
+          </Text>
+          <Button
+            variation="primary"
+            onClick={() => navigate("/external-login")}
+          >
+            Return to Login
+          </Button>
+        </Flex>
+      </Card>
+    </Flex>
+  );
+}
 
   // Full-screen expiration message
   if (isExpired) {
