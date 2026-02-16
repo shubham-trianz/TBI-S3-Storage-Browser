@@ -18,9 +18,71 @@ import { UserContext } from './context/UserContext';
 import { Toaster } from 'react-hot-toast';
 import { MyStorageBrowser } from './components/MyStorageBrowser';
 import { SecureSharePage } from './components/secureSharePage';
+import { ExternalLoginPage } from './components/ExternalLoginPage';
 import { useEffect } from 'react';
+import React from 'react';
 
 Amplify.configure(config);
+
+/* -----------------------------------------
+   Auth Guard for External Users (Session Token Based)
+------------------------------------------ */
+function RequireExternalAuth({ children }: { children: JSX.Element }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isChecking, setIsChecking] = React.useState(true);
+  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+
+  useEffect(() => {
+    const checkAuth = () => {
+      try {
+        const token = localStorage.getItem('external_access_token');
+        const expiry = localStorage.getItem('external_token_expiry');
+        
+        if (!token || !expiry) {
+          throw new Error('No session');
+        }
+        
+        // Check if token expired
+        if (Date.now() > parseInt(expiry)) {
+          // Clear expired session
+          localStorage.removeItem('external_access_token');
+          localStorage.removeItem('external_token_expiry');
+          localStorage.removeItem('external_user_email');
+          throw new Error('Session expired');
+        }
+        
+        setIsAuthenticated(true);
+      } catch {
+        // Not authenticated - redirect to external login
+        const redirectUrl = location.pathname + location.search;
+        console.log("RequireExternalAuth - Not authenticated, redirecting to /external-login");
+        console.log("RequireExternalAuth - Will return to:", redirectUrl);
+        
+        navigate('/external-login', {
+          state: {
+            from: redirectUrl,
+          },
+          replace: true,
+        });
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkAuth();
+  }, [navigate, location]);
+
+  if (isChecking) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div>Loading...</div>
+      </div>
+    );
+  }
+
+  return isAuthenticated ? children : null;
+}
 
 /* -----------------------------------------
    Auth Guard
@@ -32,7 +94,11 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 
   useEffect(() => {
     if (authStatus === 'unauthenticated') {
-      navigate('/login', {
+      // If trying to access secure-view, redirect to external login
+      const isSecureView = location.pathname === '/secure-view';
+      const loginPath = isSecureView ? '/external-login' : '/login';
+      
+      navigate(loginPath, {
         state: {
           from: location.pathname + location.search, // preserve full URL
         },
@@ -58,7 +124,6 @@ function LoginPage() {
 
   useEffect(() => {
     if (authStatus === 'authenticated') {
-      // 🔥 FIX: This now properly preserves the query string
       const from = (location.state as any)?.from || '/personal';
       
       console.log('🔍 Redirecting after login to:', from); // Debug log
@@ -103,9 +168,6 @@ function AuthenticatedApp() {
         {/* Default route */}
         <Route path="/" element={<Navigate to="/personal" replace />} />
 
-        {/* 🔓 Secure share route (NOT wrapped in RequireAuth) */}
-        <Route path="/secure-view" element={<SecureSharePage />} />
-
         {/* Protected pages */}
         <Route
           path="/personal"
@@ -147,12 +209,34 @@ function AuthenticatedApp() {
 function App() {
   return (
     <BrowserRouter>
-      <Authenticator.Provider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="*" element={<AuthenticatedApp />} />
-        </Routes>
-      </Authenticator.Provider>
+      <Routes>
+        {/* Routes OUTSIDE Authenticator.Provider (no Cognito UI) - MUST come FIRST */}
+        <Route path="/external-login" element={<ExternalLoginPage />} />
+        
+        {/* Secure share route - uses external auth (OTP) - MUST come BEFORE wildcard */}
+        <Route 
+          path="/secure-view" 
+          element={
+            <RequireExternalAuth>
+              <SecureSharePage />
+            </RequireExternalAuth>
+          } 
+        />
+        
+        {/* Routes INSIDE Authenticator.Provider (Cognito auth) */}
+        <Route path="/login" element={
+          <Authenticator.Provider>
+            <LoginPage />
+          </Authenticator.Provider>
+        } />
+        
+        {/* All internal routes go through AuthenticatedApp which has nested Routes */}
+        <Route path="/*" element={
+          <Authenticator.Provider>
+            <AuthenticatedApp />
+          </Authenticator.Provider>
+        } />
+      </Routes>
     </BrowserRouter>
   );
 }
