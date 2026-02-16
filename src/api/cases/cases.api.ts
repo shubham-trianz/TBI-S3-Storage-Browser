@@ -5,6 +5,7 @@ import {
   CreateCasePayload,
   EvidenceListResponse,
   ShareCaseToPayload,
+  ShareExternalPayload,
   ReceivedCase
 } from "./cases.types";
 
@@ -18,6 +19,10 @@ export const CasesAPI = {
     shareCaseTo(payload: ShareCaseToPayload[]): Promise<void> {
         return apiClient.post('/share-case-to', payload).then(res => res.data)
     },
+    shareExternal(payload: ShareExternalPayload): Promise<void> {
+    return apiClient.post('/share-external', payload).then(res => res.data);
+  },
+    // getReceivedCaseByUser(userId: string): Promise<void> {
     getReceivedCaseByUser(userId: string): Promise<ReceivedCase> {
         return apiClient.get('/get-received-case', {params: {
             user_id: userId
@@ -31,8 +36,20 @@ export const CasesAPI = {
     return apiClient
       .get(`/cases/${caseNumber}/evidence`, { params })
       .then(res => res.data);
-  }
+  },
+  deleteEvidence(
+  caseNumber: string,
+  objectKeys: string[]
+): Promise<void> {
+  return apiClient
+    .delete(`/cases/${caseNumber}/evidence`, {
+      data: { objectKeys }   // ⚠ axios requires "data" for DELETE body
+    })
+    .then(res => res.data);
+},
+
 }
+
 
 
 // export const CasesAPI = {

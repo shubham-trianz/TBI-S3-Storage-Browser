@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CasesAPI } from '../api/cases/cases.api';
-import type { Case, CreateCasePayload, ShareCaseToPayload } from '../api/cases/cases.types';
+import type { Case, CreateCasePayload, ShareCaseToPayload, ShareExternalPayload } from '../api/cases/cases.types';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import toast from 'react-hot-toast'; 
 import { AxiosError } from "axios";
 
@@ -12,12 +13,10 @@ export function useCases() {
   });
 }
 
-
 export function useReceivedCases(userId: string) {
   return useQuery({
     queryKey: ['received-cases'],
     queryFn: () => CasesAPI.getReceivedCaseByUser(userId),
-    // enabled: !!userId,
   });
 }
 
@@ -45,11 +44,33 @@ export function useShareCaseTo() {
     mutationFn: CasesAPI.shareCaseTo,
 
     onSuccess: () => {
-      // Cases list (owner view might show "shared by me" badge)
       queryClient.invalidateQueries({ queryKey: ['cases'] });
-
-      // If you later add "sharedCases" query
-      // queryClient.invalidateQueries({ queryKey: ['sharedCases'] });
     }
+  });
+}
+
+export function useShareExternal() {
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+  return useMutation({
+    mutationFn: async (payload: ShareExternalPayload) => {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+
+      const res = await fetch(`${API_BASE}/share-external`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to share: ${res.status}`);
+      }
+
+      return res.json();
+    },
   });
 }

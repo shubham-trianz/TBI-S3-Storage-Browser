@@ -8,6 +8,18 @@ export interface Case {
     shared_to: SharedTo[],
     email: string,
     size: number
+    // shared_to?: {
+    //   user_id: string;
+    //   email: string;
+    //   permissions: {
+    //     read: boolean;
+    //     write: boolean;
+    //   };
+    // }[];
+}
+
+export interface DeleteEvidencePayload {
+  objectKeys: string[];
 }
 export interface SharedTo {
   email: string,
@@ -71,16 +83,13 @@ export interface ShareCaseToPayload {
         // epoch seconds (optional)
 }
 
-// export interface ShareCaseToPayload {
-//   items: SharedCaseItem[];
-// }
-
 export interface ReceiveCasePayload {
   user_name: string
 }
 
-
-
+export interface ReceiveCasePayload {
+  user_name: string
+}
 
 export interface EvidenceItem {
   evidence_number: string;
@@ -94,3 +103,21 @@ export interface EvidenceListResponse {
   nextCursor?: string | null;
 }
 
+export type ShareExternalPayload = {
+  case_number: string;
+  file: string;
+  email: string;
+  wrapped_url: string;
+
+  case_title?: string;
+  case_agents?: string;
+  jurisdiction?: string[];
+  owner: string;
+  owner_email?: string;
+  
+  permissions: {
+    read: boolean;
+    write: boolean;
+  };
+  shared_at: string;
+};

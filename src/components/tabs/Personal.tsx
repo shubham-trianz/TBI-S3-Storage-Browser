@@ -10,8 +10,16 @@ import { DeleteObjects } from "../utils/DeleteObjects";
 import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
 import Breadcrumbs from "../utils/Breadcrumbs"
-import { useCases, useShareCaseTo } from '../../hooks/cases';
+import { useCases, useShareCaseTo, useShareExternal } from '../../hooks/cases';
+// import ShareDialog from '../utils/ShareDialog';
+// import { useCases } from '../../hooks/cases';
 import { useCaseEvidence } from '../../hooks/useCaseEvidence';
+// import { useDeleteEvidence } from '../../hooks/useDeleteEvidence';
+import FolderIcon from "@mui/icons-material/Folder";
+import DownloadIcon from "@mui/icons-material/Download";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+
+import { FileViewDownloadAPI } from '../../api/viewdownload';
 
 import CasesGrid from '../utils/CaseTable';
 
@@ -35,6 +43,8 @@ export const Personal = () => {
   const [casesLoading, setCasesLoading] = useState(true);
   const [filesLoading, setFilesLoading] = useState(true);
 
+  // const { mutateAsync: deleteEvidence } = useDeleteEvidence();
+  const { mutateAsync: shareExternal } = useShareExternal();
   const { user_name, email } = useUser()
 
   const createS3Client = async () => {
@@ -243,55 +253,108 @@ export const Personal = () => {
                   : []
               }
               onClose={() => setOpen(false)}
-              onShare={async (selected) => {
-              const now = new Date().toISOString();
-              const items = [];
+              onShare={async (payload) => {
+                try {
+                  const now = new Date().toISOString();
 
-              const selectedUsers = selected.users;
-              const selectedFiles = selected.files;
-              for (const file of selectedFiles) {
-                const caseNumber = extractCaseNumber(file);
+                  /* =========================
+                    INTERNAL SHARING
+                  ========================== */
+                  if (payload.mode === 'internal' && payload.users) {
+                    const items: any[] = [];
 
-                const caseMeta = cases?.find(
-                  c => c.case_number === caseNumber
-                );
+                    for (const file of payload.files) {
+                      const caseNumber = extractCaseNumber(file);
 
-                if (!caseMeta) continue; 
+                      const caseMeta = cases?.find(
+                        c => c.case_number === caseNumber
+                      );
 
-                for (const user of selectedUsers) {
-                  items.push({
-                    receiver_user_id: `RECEIVER#${user.user_name}`,
-                    case_number: `CASE#${caseNumber}`,
+                      if (!caseMeta) continue;
 
-                    gsi1pk: `OWNER#${user_name}`,
-                    gsi1sk: `CASE#${caseNumber}#RECEIVER#${user.user_name}`,
+                      for (const user of payload.users) {
+                        items.push({
+                          receiver_user_id: `RECEIVER#${user.user_name}`,
+                          case_number: `CASE#${caseNumber}`,
 
-                    receiver_user: user.user_name,
-                    receiver_email: user.email,
-                    owner_user: user_name,
-                    
+                          gsi1pk: `OWNER#${user_name}`,
+                          gsi1sk: `CASE#${caseNumber}#RECEIVER#${user.user_name}`,
 
-                    case_title: caseMeta.case_title,
-                    jurisdiction: caseMeta.jurisdiction,
-                    case_agents: caseMeta.case_agents,
-                    size: caseMeta.size ?? 0,
-                    source_key: caseMeta.source_key,
-                    owner_email: caseMeta.email,
+                          receiver_user: user.user_name,
+                          receiver_email: user.email,
+                          owner_user: user_name,
 
-                    permissions: {
-                      read: user.read,
-                      write: user.write
-                    },
+                          case_title: caseMeta.case_title,
+                          jurisdiction: caseMeta.jurisdiction,
+                          case_agents: caseMeta.case_agents,
+                          size: caseMeta.size ?? 0,
+                          source_key: caseMeta.source_key,
+                          owner_email: caseMeta.email,
 
-                    shared_at: now
-                  });
-                }
-              }
+                          permissions: {
+                            read: user.read,
+                            write: user.write
+                          },
+
+                          shared_at: now
+                        });
+                      }
+                    }
+
+                    // await shareCaseTo(items);
+              console.log('Shared case items:', items);
               await shareCaseTo(items);
               setOpen(false)
               toast.success('Success')
-            }}
+                  }
 
+                  /* =========================
+                    EXTERNAL SHARING
+                  ========================== */
+                  if (payload.mode === 'external' && payload.externalEmails) {
+                    for (const file of payload.files) {
+                      const caseNumber = extractCaseNumber(file);
+                      
+                      // 📦 Find the case metadata
+                      const caseMeta = cases?.find(c => c.case_number === caseNumber);
+                      
+                      if (!caseMeta) {
+                        console.warn(`Case metadata not found for ${caseNumber}`);
+                        continue;
+                      }
+
+                      // 🔐 Build the wrapped URL on the frontend
+                      const frontendUrl = window.location.origin; 
+                      const secureViewPath = `/secure-view?prefix=${encodeURIComponent(file)}`;
+                      const wrappedUrl = `${frontendUrl}/external-login?redirect=${encodeURIComponent(secureViewPath)}`;
+
+                      for (const ext of payload.externalEmails) {
+                        await shareExternal({
+                          case_number: caseNumber,
+                          file,
+                          email: ext.email,
+                          wrapped_url: wrappedUrl,
+                          
+                          // 📦 NEW: Include case metadata
+                          case_title: caseMeta.case_title,
+                          case_agents: caseMeta.case_agents,
+                          jurisdiction: caseMeta.jurisdiction,
+                          owner: user_name,
+                          owner_email: caseMeta.email,
+                          
+                          permissions: {
+                            read: true,
+                            write: false
+                          },
+                          shared_at: now
+                        });
+                      }
+                    }
+                  }
+                } catch (err) {
+                  console.error("Share failed:", err);
+                }
+              }}
             />
           )}
 
@@ -355,11 +418,11 @@ export const Personal = () => {
             />
             )
         }
-          <DeleteObjects
-            selectedPaths={[...selected]}
-            onDeleted={loadFiles}
-          />
-
+        <DeleteObjects
+          selectedPaths={[...selectedRows]}
+          currentCaseNumber={currentCaseNumber}
+          onDeleted={loadFiles}
+        />
           {identityId && !isRoot && (
           <UploadButton
             prefix={`private/${identityId}/${currentPath}`}
