@@ -37,11 +37,19 @@ export async function generateAndCopyLink(params: {
     throw new Error("Signed URL missing from response");
   }
 
-  // 🔐 Wrap CloudFront signed URL inside secure frontend route
-  // ✅ CORRECT
-const wrappedUrl = `${window.location.origin}/secure-view?u=${encodeURIComponent(
-  btoa(data.url)
-)}`;
+  if (!params.folderPrefix) {
+    throw new Error("folderPrefix required for secure case sharing");
+  }
+
+  // 🔐 Build the secure-view URL with prefix
+  const secureViewUrl = `/secure-view?prefix=${encodeURIComponent(
+    params.folderPrefix
+  )}`;
+
+  // 🔐 Wrap it with external-login that redirects to secure-view after auth
+  const wrappedUrl = `${window.location.origin}/external-login?redirect=${encodeURIComponent(
+    secureViewUrl
+  )}`;
 
   await navigator.clipboard.writeText(wrappedUrl);
 

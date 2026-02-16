@@ -779,7 +779,7 @@ useEffect(() => {
 
                 if (!caseMeta) continue; // safety
 
-                for (const user of selectedUsers) {
+                for (const user of selectedUsers || []) {
                   items.push({
                     receiver_user_id: `RECEIVER#${user.user_name}`,
                     case_number: `CASE#${caseNumber}`,
