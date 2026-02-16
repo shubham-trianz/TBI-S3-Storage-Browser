@@ -14,14 +14,10 @@ import {
 } from "@mui/material";
 import { useUser } from "../../context/UserContext";
 import { useCreateCase } from "../../hooks/cases";
+import toast from "react-hot-toast";
 
 type CreateCaseProps = {
   basePath: string;
-  // onCreated: (payload: any) => void;
-  disabled?: boolean;
-  onDuplicateError?: (message: string, type: 'error' | 'success') => void;
-  folderExists?: (folderName: string) => boolean;
-  refreshCases?: () => Promise<any>;
 };
 
 const JURISDICTIONS = [
@@ -36,11 +32,6 @@ const JURISDICTIONS = [
 
 export const CreateCase = ({
   basePath,
-  // onCreated,
-  disabled,
-  onDuplicateError,
-  folderExists,
-  refreshCases,
 }: CreateCaseProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -52,7 +43,7 @@ export const CreateCase = ({
   const [caseAgents, setCaseAgents] = useState("");
   const { user_name,email } = useUser();
 
-  const { mutate: createCase } = useCreateCase();
+  const { mutateAsync: createCase } = useCreateCase();
 
 
   const validateCaseNumber = (value: string) =>
@@ -68,7 +59,6 @@ export const CreateCase = ({
   };
 
   const handleCreate = async () => {
-    setError(null);
 
     if (!validateCaseNumber(caseNumber)) {
       setError("Case Number must be in format YYYY-1234567");
@@ -85,59 +75,34 @@ export const CreateCase = ({
       return;
     }
 
+    const folderPath = `${basePath}${caseNumber}/`;
+
+    const payload = {
+      user_name: user_name,
+      email: email || '',
+      case_number: caseNumber,
+      case_title: caseTitle,
+      jurisdiction: JSON.stringify(jurisdiction),
+      case_agents: caseAgents,
+      source_key: folderPath,
+    }
     try {
-      setLoading(true);
-
-      // Refresh cases from DB BEFORE checking for duplicates
-      if (refreshCases) {
-        await refreshCases();
-      }
-
-      // Now check if case already exists with fresh data
-      if (folderExists && folderExists(caseNumber)) {
-        const message = `"${caseNumber}" already exists. Try with another name?`;
-        setError(message);
-        onDuplicateError?.(message, 'error');
-        setLoading(false);
-        return;
-      }
-
-      const folderPath = `${basePath}${caseNumber}/`;
+      setLoading(true)
+      await createCase(payload);
 
       await uploadData({
         path: `${folderPath}`,
         data: new Blob([]),
-        // options: {
-        //   metadata: {
-        //     user_name: user_name,
-        //     user_email: email || '',
-        //     case_number: caseNumber,
-        //     case_title: caseTitle,
-        //     jurisdiction: JSON.stringify(jurisdiction),
-        //     case_agents: caseAgents,
-        //   },
-        // },
       }).result;
-      const payload = {
-        user_name: user_name,
-        email: email || '',
-        case_number: caseNumber,
-        case_title: caseTitle,
-        jurisdiction: JSON.stringify(jurisdiction),
-        case_agents: caseAgents,
-        source_key: folderPath,
-      }
-
-      onDuplicateError?.(`"${caseNumber}" created successfully`, 'success');
-      setOpen(false);
-      // onCreated(payload);
-      console.log('payload: ', payload)
-      await createCase(payload);
-    } catch (err) {
-      console.error("Create case failed", err);
-      setError("Failed to create Case Evidence Repository");
+      toast.success("Case created successfully");
+      setLoading(false)
+      setOpen(false)
+    } catch  {
+      setLoading(false)
+      setOpen(false)
     } finally {
-      setLoading(false);
+      setLoading(false)
+      setOpen(false)
     }
   };
 
@@ -146,11 +111,10 @@ export const CreateCase = ({
       <Button
         size="small"
         onClick={handleOpen}
-        isDisabled={disabled}
+        isDisabled={loading}
       >
         Create Case
       </Button>
-
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Create Case Evidence Repository</DialogTitle>
 
@@ -234,7 +198,7 @@ export const CreateCase = ({
             onClick={handleCreate}
             isDisabled={loading}
           >
-            {loading ? "Creating..." : "Create"}
+            {loading ? "Creating..." : "Create Case"}
           </Button>
         </DialogActions>
       </Dialog>

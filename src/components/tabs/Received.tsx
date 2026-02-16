@@ -1,36 +1,47 @@
-import { list } from 'aws-amplify/storage';
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { fetchAuthSession } from 'aws-amplify/auth';
+// import { list } from 'aws-amplify/storage';
+import { useEffect, useState, useRef, useMemo } from 'react';
+// import { fetchAuthSession } from 'aws-amplify/auth';
 import {
   Flex,
   Heading,
   Divider,
-  Button,
 } from "@aws-amplify/ui-react";
 import { UploadButton } from "../utils/UploadButton";
 // import { DeleteObjects } from "../utils/DeleteObjects";
 // import { CreateCase } from '../utils/CreateCase';
 // import { CreateFolder } from '../utils/CreateFolder';
-import { generateAndCopyLink } from "../utils/generateLink";
+// import { generateAndCopyLink } from "../utils/generateLink";
 import Breadcrumbs from "../utils/Breadcrumbs"
 import { useReceivedCases } from '../../hooks/cases';
 import { useUser } from '../../context/UserContext';
 import { useListS3Objects } from '../../hooks/lists3objects';
 import { useCaseEvidence } from '../../hooks/useCaseEvidence';
-
+import { FileViewDownloadAPI } from '../../api/viewdownload';
+import { IconButton, Tooltip } from '@mui/material';
+import DownloadIcon from "@mui/icons-material/Download";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 // import { useCases 
 // } from '../../hooks/cases';
-type CaseItem = {
-  case_number: string;
-  case_title: string;
-  jurisdiction: string;
-  case_agents: string;
-  email: string;
-  user_name: string;
-  size?: number;
-};
+// type CaseItem = {
+//   case_number: string;
+//   case_title: string;
+//   jurisdiction: string;
+//   case_agents: string;
+//   email: string;
+//   user_name: string;
+//   size?: number;
+// };
 
-const Received = () => {
+export const Received = () => {
+    const { user_name } = useUser()
+
+  // const params = new URLSearchParams(location.search)
+  // const caseId = params.get('caseId')
+  // console.log('caseId: ', caseId)
+
+  const {data: receivedCases} = useReceivedCases(user_name)
+  console.log('receivedCases: ', receivedCases)
+  const cases = receivedCases?.cases
   // const [files, setFiles] = useState<any[]>([]);
   const [baseKey, setBaseKey] = useState<string | null>(null); // case root
   const [activeCase, setActiveCase] = useState<null | {
@@ -40,11 +51,11 @@ const Received = () => {
   const isInsideCase = activeCase !== null;
   console.log('isInsideCase: ', isInsideCase)
   console.log('activeCase: ', activeCase)
-  const [loading, setLoading] = useState(true);
-  const [identityId, setIdentityId] = useState<string | null>(null);
+  // const [loading, setLoading] = useState(true);
+  // const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [cases, setCases] = useState<CaseItem[]>([]);
+  // const [cases, setCases] = useState<CaseItem[]>([]);
   // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const currentPath = pathStack.join('');
   
@@ -79,32 +90,40 @@ const Received = () => {
   console.log('evidenceByKey: ', evidenceByKey);
 
   // const currentPrefix = pathStack[pathStack.length - 1];
-  const currentPrefix = baseKey
-  ? `${baseKey}${pathStack.length ? pathStack.join('/') + '/' : ''}`
+  const normalizedBaseKey = baseKey
+  ? baseKey.endsWith('/')
+    ? baseKey
+    : `${baseKey}/`
+  : null;
+  // const currentPrefix = baseKey
+  // ? `${baseKey}${pathStack.length ? pathStack.join('/') + '/' : ''}`
+  // : null;
+  const currentPrefix = normalizedBaseKey
+  ? `${normalizedBaseKey}${pathStack.length ? pathStack.join('/') + '/' : ''}`
   : null;
   console.log('currentPrefix: ', currentPrefix)
   console.log('pathStack: ', pathStack)
   const { data: files=[]} = useListS3Objects(currentPrefix);
   console.log('objectssssss: ', files)
   // useEffect(() => setFiles(objects), [currentPrefix])
-  const { user_name } = useUser()
   console.log('currentPath: ', currentPath)
-  const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
-  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  // const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
+  // const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   // const isRoot = pathStack.length === 0;
   const isRoot = baseKey === null;
   // const isFilesRoot = baseKey !== null && pathStack.length === 0;
 
-  const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
-  const selectedFolders = [...selected].filter(p => p.endsWith("/"));
+  // const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
+  // const selectedFolders = [...selected].filter(p => p.endsWith("/"));
   const selectAllRef = useRef<HTMLInputElement>(null);
   const [searchField, setSearchField] = useState<SearchField>('case_number');
   const [evidenceSearchField, setEvidenceSearchField] = useState<EvidenceSearchField>('name');
   const [searchValue, setSearchValue] = useState('');
   // const { data: cases, isLoading } = useCases();
   // console.log('cases: ', cases)
-  const {data: receivedCases} = useReceivedCases(user_name)
-  console.log('receivedCases: ', receivedCases)
+  
+
+  
   
   type SearchField = 'case_number' | 'case_title' | 'case_agents';
   type EvidenceSearchField = 'name' | 'evidence_number' | 'description';
@@ -121,11 +140,11 @@ const Received = () => {
     { key: 'description', label: 'Description' }
   ];
 
-  type SortKey = 'case_number' | 'case_title' | 'case_agents' | 'size';
+  // type SortKey = 'case_number' | 'case_title' | 'case_agents' | 'size';
   type SortOrder = 'asc' | 'desc';
 
-  const [sortKey, setSortKey] = useState<SortKey>('case_number');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  // const [sortKey, setSortKey] = useState<SortKey>('case_number');
+  // const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   
   const filteredCases = useMemo(() => {
@@ -142,36 +161,36 @@ const Received = () => {
   }, [cases, searchField, searchValue]);
 
 
-  const sortedCases = useMemo(() => {
-  const sorted = [...filteredCases].sort((a, b) => {
+//   const sortedCases = useMemo(() => {
+//   const sorted = [...filteredCases].sort((a, b) => {
     
-    if (sortKey === 'size') {
-      const aSize = typeof a.size === 'number' ? a.size : 0;
-      const bSize = typeof b.size === 'number' ? b.size : 0;
-      return aSize - bSize;
-    }
+//     if (sortKey === 'size') {
+//       const aSize = typeof a.size === 'number' ? a.size : 0;
+//       const bSize = typeof b.size === 'number' ? b.size : 0;
+//       return aSize - bSize;
+//     }
 
-    const aVal = String(a[sortKey] ?? '');
-    const bVal = String(b[sortKey] ?? '');
+//     const aVal = String(a[sortKey] ?? '');
+//     const bVal = String(b[sortKey] ?? '');
 
-    // string sort
-    return String(aVal ?? '').localeCompare(String(bVal ?? ''), undefined, {
-      sensitivity: 'base',
-      numeric: true
-    });
-  });
+//     // string sort
+//     return String(aVal ?? '').localeCompare(String(bVal ?? ''), undefined, {
+//       sensitivity: 'base',
+//       numeric: true
+//     });
+//   });
 
-  return sortOrder === 'asc' ? sorted : sorted.reverse();
-}, [filteredCases, sortKey, sortOrder]);
+//   return sortOrder === 'asc' ? sorted : sorted.reverse();
+// }, [filteredCases, sortKey, sortOrder]);
 
-const handleSort = (key: SortKey) => {
-  if (sortKey === key) {
-    setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
-  } else {
-    setSortKey(key);
-    setSortOrder('asc');
-  }
-};
+// const handleSort = (key: SortKey) => {
+//   if (sortKey === key) {
+//     setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+//   } else {
+//     setSortKey(key);
+//     setSortOrder('asc');
+//   }
+// };
 
 // File sorting and filtering with evidence metadata
 type FileSortKey = 'name' | 'evidence_number' | 'description' | 'uploaded';
@@ -222,14 +241,15 @@ const sortedFiles = useMemo(() => {
     let result = 0;
 
     switch (fileSortKey) {
-      case 'name':
+      case 'name': {
         result = aName.localeCompare(bName, undefined, { 
           sensitivity: 'base',
           numeric: true 
         });
         break;
+      }
       
-      case 'evidence_number':
+      case 'evidence_number': {
         const aEvidenceNum = aEvidence?.evidence_number || '';
         const bEvidenceNum = bEvidence?.evidence_number || '';
         result = aEvidenceNum.localeCompare(bEvidenceNum, undefined, {
@@ -237,14 +257,16 @@ const sortedFiles = useMemo(() => {
           numeric: true
         });
         break;
+      }
       
-      case 'description':
+      case 'description': {
         const aDesc = aEvidence?.description || '';
         const bDesc = bEvidence?.description || '';
         result = aDesc.localeCompare(bDesc, undefined, { sensitivity: 'base' });
         break;
+      }
       
-      case 'uploaded':
+      case 'uploaded': {
         const aTime = aEvidence?.uploaded_at 
           ? new Date(aEvidence.uploaded_at).getTime() 
           : 0;
@@ -253,6 +275,7 @@ const sortedFiles = useMemo(() => {
           : 0;
         result = aTime - bTime;
         break;
+      }
     }
 
     return result;
@@ -274,152 +297,26 @@ useEffect(() => {
   setSearchValue('');
 }, [searchField, evidenceSearchField]);
   
-  const rootFolderPrefix = identityId
-  ? `private/${identityId}/`
-  : null;
-  const canGenerateLink =
-    selectedFiles.length > 0 ||
-    selectedFolders.length === 1 ||
-    !!currentFolderPrefix ||
-    !!rootFolderPrefix;  
+  // const rootFolderPrefix = identityId
+  // ? `private/${identityId}/`
+  // : null;
+  // const canGenerateLink =
+  //   selectedFiles.length > 0 ||
+  //   selectedFolders.length === 1 ||
+  //   !!currentFolderPrefix ||
+  //   !!rootFolderPrefix;  
 
 
 
-  // const showNotification = (message: string, type: 'error' | 'success' = 'error', duration = 4000) => {
-  //   setNotification({ message, type });
-  //   setTimeout(() => setNotification(null), duration);
-  // };
 
-  // Check if folder/case already exists (refreshed data)
-  // const folderExists = (folderName: string): boolean => {
-  //   if (isRoot) {
-  //     return cases.some(c => c.case_number.toLowerCase() === folderName.toLowerCase());
-  //   }
-  //   return files.some(f => f.path.toLowerCase() === `${currentPath}${folderName}/`.toLowerCase());
-  // };
-//   const createCase = useCallback(async (payload: any) => {
-//   const session = await fetchAuthSession();
-//   const token = session.tokens?.idToken?.toString();
-
-//   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-
-//   const res = await fetch(`${apiBaseUrl}/cases`, {
-//     method: "PUT",
-//     headers: {
-//       Authorization: `Bearer ${token}`,
-//       "Content-Type": "application/json",
-//     },
-//     body: JSON.stringify(payload),
-//   });
-
-//   if (!res.ok) {
-//     throw new Error(`Request failed: ${res.status}`);
-//   }
-
-//   return await res.json();
-// }, []);
-
-  // const isSingleFileSelected =
-  //   !!selectedFilePath && !selectedFilePath.endsWith("/");
-
-  // const loadCases = useCallback(async () => {
-  //   try {
+  // useEffect(() => {
+  //   async function init() {
   //     const session = await fetchAuthSession();
-  //     const token = session.tokens?.idToken?.toString();
-
-  //     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-  //     console.log('apiBaseUrl: ', apiBaseUrl)
-  //     const res = await fetch(
-  //       `${apiBaseUrl}/cases`,
-  //       {
-  //         method: "GET",
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //           "Content-Type": "application/json"
-  //         },
-  //         // body: JSON.stringify(caseData)
-  //       },
-  //     );
-  //     if (!res.ok) {
-  //       throw new Error(`Request failed: ${res.status}`);
-  //     }
-    
-  //     const response = await res.json();
-  //     console.log('response: ', response)
-  //     setCases(response)
-  //     return response;
-  //   } catch (err) {
-  //     console.error('Error loading cases:', err);
-  //     return [];
+  //     setIdentityId(session.identityId ?? null);
   //   }
-  // }, [])
-  
+  //   init();
+  // }, []);
 
-  // useEffect(() => {
-  //   loadCases()
-  // }, [loadCases])
-
-  /* ------------------ AUTH INIT ------------------ */
-  useEffect(() => {
-    async function init() {
-      const session = await fetchAuthSession();
-      setIdentityId(session.identityId ?? null);
-    }
-    init();
-  }, []);
-
-  function getFirstLevelItems(
-    items: any[],
-    basePath: string
-  ): any[] {
-    const map = new Map<string, any>();
-
-    if (!basePath.endsWith('/')) {
-      basePath += '/';
-    }
-
-    for (const item of items) {
-
-      if (!item.path.startsWith(basePath)) continue;
-
-      // const relative = item.path.replace(basePath, '');
-      const relative = item.path.slice(basePath.length);
-      console.log('relative: ', relative)
-      // const parts = relative.split('/').filter(Boolean);
-      const parts = relative.split('/').filter(Boolean);
-
-      console.log('parts: ', parts)
-      // if (parts.length === 1 && !item.path.endsWith('/')) {
-      //   map.set(item.path, item);
-      //   continue;
-      // }
-      if (parts.length === 1) {
-        map.set(item.path, {
-          ...item,
-          path: item.path
-        });
-        continue;
-      }
-
-      // subfolder name
-      const firstPart = parts[0];
-      const folderPath = `${basePath}${firstPart}/`;
-
-      if (!map.has(folderPath)) {
-        map.set(folderPath, {
-          path: folderPath,
-          isFolder: true
-        });
-      }
-    }
-
-    return Array.from(map.values());
-  }
-
-  // useEffect(() => {
-  //   loadFiles();
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [identityId, currentPath]);
 
   const formatBytes = (bytes?: number) =>
     bytes
@@ -446,45 +343,6 @@ useEffect(() => {
     }
   };
 
-  const CasesTableHeader = () => (
-    <thead>
-      <tr>
-        <th>
-          <input
-            ref={selectAllRef}
-            type="checkbox"
-            checked={cases.length > 0 && selected.size === cases.length}
-            onChange={toggleSelectAll}
-          />
-        </th>
-        <th 
-          onClick={() => handleSort('case_number')}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Case Number {sortKey === 'case_number' && (sortOrder === 'asc' ? '↑' : '↓')}
-        </th>
-        <th 
-          onClick={() => handleSort('case_title')}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Case Title {sortKey === 'case_title' && (sortOrder === 'asc' ? '↑' : '↓')}
-        </th>
-        <th 
-          onClick={() => handleSort('case_agents')}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Case Agent {sortKey === 'case_agents' && (sortOrder === 'asc' ? '↑' : '↓')}
-        </th>
-        <th>Jurisdiction</th>
-        <th 
-          onClick={() => handleSort('size')}
-          style={{ cursor: 'pointer', userSelect: 'none' }}
-        >
-          Size {sortKey === 'size' && (sortOrder === 'asc' ? '↑' : '↓')}
-        </th>
-      </tr>
-    </thead>
-  );
 
   const SharedCasesTableHeader = () => (
     <thead>
@@ -493,7 +351,7 @@ useEffect(() => {
           <input
             ref={selectAllRef}
             type="checkbox"
-            checked={cases.length > 0 && selected.size === cases.length}
+            checked={selected.size === receivedCases?.cases?.length && receivedCases?.cases?.length > 0}
             onChange={toggleSelectAll}
           />
         </th>
@@ -529,7 +387,7 @@ useEffect(() => {
           onClick={() => handleFileSort('evidence_number')}
           style={{ cursor: 'pointer', userSelect: 'none' }}
         >
-          Evidence # {fileSortKey === 'evidence_number' && (fileSortOrder === 'asc' ? '↑' : '↓')}
+          Evidence {fileSortKey === 'evidence_number' && (fileSortOrder === 'asc' ? '↑' : '↓')}
         </th>
         <th 
           onClick={() => handleFileSort('description')}
@@ -538,13 +396,14 @@ useEffect(() => {
           Description {fileSortKey === 'description' && (fileSortOrder === 'asc' ? '↑' : '↓')}
         </th>
         <th>Type</th>
-        <th>Size</th>
         <th 
           onClick={() => handleFileSort('uploaded')}
           style={{ cursor: 'pointer', userSelect: 'none' }}
         >
           Uploaded {fileSortKey === 'uploaded' && (fileSortOrder === 'asc' ? '↑' : '↓')}
         </th>
+        <th>Size</th>
+        <th>Actions</th>
       </tr>
     </thead>
   );
@@ -621,6 +480,18 @@ useEffect(() => {
     const name = item.path.split('/').filter(Boolean).pop()!;
     const isFolder = item.path.endsWith('/');
 
+    const handleView = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'view');
+      console.log('url: ', url)
+      window.open(url, '_blank');
+    };
+  
+    const handleDownload = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'download');
+      window.location.href = url;
+    };
     // Get evidence metadata
     const evidence = evidenceByKey.get(item.path) || evidenceByKey.get(name);
 
@@ -655,6 +526,25 @@ useEffect(() => {
             : item.lastModified
             ? item.lastModified.toLocaleString()
             : '—'}
+        </td>
+        <td>
+  
+          {!isFolder && (
+            <>
+              <div style={{display: 'flex', alignItems: 'center'}}>
+                  <Tooltip title="View">
+                    <IconButton onClick={handleView} color="primary">
+                      <VisibilityIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Download">
+                    <IconButton onClick={handleDownload} color="secondary">
+                      <DownloadIcon />
+                    </IconButton>
+                  </Tooltip>
+              </div>
+            </>
+          )}
         </td>
       </tr>
     );
@@ -704,7 +594,7 @@ useEffect(() => {
                 }`}
                 value={searchValue}
                 onChange={e => setSearchValue(e.target.value)}
-                disabled={isRoot ? !cases?.length : !files?.length}
+                disabled={isRoot ? !receivedCases?.cases?.length : !files?.length}
               />
 
               {searchValue && (
@@ -719,7 +609,7 @@ useEffect(() => {
             </div>
           </div>
 
-          <Button
+          {/* <Button
             size="small"
             variation="primary"
             isLoading={isGeneratingLink}
@@ -760,7 +650,7 @@ useEffect(() => {
           >
             Generate link
           </Button>
-          
+           */}
             
           {isInsideCase && activeCase.canWrite && (
             <UploadButton
@@ -812,14 +702,14 @@ useEffect(() => {
             </tr>
           )} */}
 
-          {!loading && cases?.length === 0 && (
+          {/* {!loading && cases?.length === 0 && (
             <tr className="loading-row">
               <td colSpan={5}>Empty folder</td>
             </tr>
-          )}
+          )} */}
 
           {/* {!loading && isRoot && receivedCases?.cases?.map(renderSharedCaseRow)} */}
-          {isRoot && receivedCases?.cases?.map(renderSharedCaseRow)}
+          {isRoot && filteredCases?.map(renderSharedCaseRow)}
           {/* {!loading && !isRoot && files.map(renderFileRow)} */}
           {!isRoot && sortedFiles.map(renderFileRow)}
         </tbody>

@@ -4,36 +4,43 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 import {
   Flex,
   Heading,
-  Divider,
+  // Divider,
   Button,
 } from "@aws-amplify/ui-react";
 import { UploadButton } from "../utils/UploadButton";
 import { DeleteObjects } from "../utils/DeleteObjects";
 import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
-import { generateAndCopyLink } from "../utils/generateLink";
+// import { generateAndCopyLink } from "../utils/generateLink";
 import Breadcrumbs from "../utils/Breadcrumbs"
 import { useCases, useShareCaseTo, useShareExternal } from '../../hooks/cases';
 // import ShareDialog from '../utils/ShareDialog';
 // import { useCases } from '../../hooks/cases';
 import { useCaseEvidence } from '../../hooks/useCaseEvidence';
-import { useDeleteEvidence } from '../../hooks/useDeleteEvidence';
+// import { useDeleteEvidence } from '../../hooks/useDeleteEvidence';
+import FolderIcon from "@mui/icons-material/Folder";
+import DownloadIcon from "@mui/icons-material/Download";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+
+import { FileViewDownloadAPI } from '../../api/viewdownload';
 
 
 import ShareDialog from '../utils/ShareDialog';
 import { useUser } from '../../context/UserContext';
 import { useCognitoUser } from '../../hooks/users';
+import { IconButton, Tooltip } from '@mui/material';
+import toast from 'react-hot-toast';
 // import { useQueryClient } from '@tanstack/react-query';
  
-type CaseItem = {
-  case_number: string;
-  case_title: string;
-  jurisdiction: string;
-  case_agents: string;
-  email: string;
-  user_name: string;
-  size?: number;
-};
+// type CaseItem = {
+//   case_number: string;
+//   case_title: string;
+//   jurisdiction: string;
+//   case_agents: string;
+//   email: string;
+//   user_name: string;
+//   size?: number;
+// };
 
 
 
@@ -43,9 +50,9 @@ export const Personal = () => {
   const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const { mutateAsync: deleteEvidence } = useDeleteEvidence();
-  const { user_name } = useUser()
+  // const { mutateAsync: deleteEvidence } = useDeleteEvidence();
   const { mutateAsync: shareExternal } = useShareExternal();
+  const { user_name, email } = useUser()
 
   // const [cases, setCases] = useState<CaseItem[]>([]);
   // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
@@ -74,13 +81,12 @@ export const Personal = () => {
   const { mutate: shareCaseTo } = useShareCaseTo();
 
   
-  console.log('casessss: ', cases)
   const { data: cognitoUsers,  } = useCognitoUser()
-  console.log('cognitoUsers: ', cognitoUsers)
+
+  const filteredUsers = cognitoUsers?.filter(item => item.email != email)
   
   // const [selectedEvidence, setSelectedEvidence] = useState<string[]>([]);
   console.log('cases: ', cases)
-  console.log('evidenceData: ', evidenceData)
   const evidenceByKey = useMemo(() => {
   const map = new Map<string, any>();
   evidenceData?.items?.forEach(ev => {
@@ -211,14 +217,15 @@ const sortedFiles = useMemo(() => {
     let result = 0;
 
     switch (fileSortKey) {
-      case 'name':
+      case 'name':{
         result = aName.localeCompare(bName, undefined, { 
           sensitivity: 'base',
           numeric: true 
         });
         break;
+      }
       
-      case 'evidence_number':
+      case 'evidence_number': {
         const aEvidenceNum = aEvidence?.evidence_number || '';
         const bEvidenceNum = bEvidence?.evidence_number || '';
         result = aEvidenceNum.localeCompare(bEvidenceNum, undefined, {
@@ -226,14 +233,16 @@ const sortedFiles = useMemo(() => {
           numeric: true
         });
         break;
+      }
       
-      case 'description':
+      case 'description': {
         const aDesc = aEvidence?.description || '';
         const bDesc = bEvidence?.description || '';
         result = aDesc.localeCompare(bDesc, undefined, { sensitivity: 'base' });
         break;
+      }
       
-      case 'uploaded':
+      case 'uploaded': {
         const aTime = aEvidence?.uploaded_at 
           ? new Date(aEvidence.uploaded_at).getTime()
           : a.lastModified?.getTime() || 0;
@@ -242,6 +251,7 @@ const sortedFiles = useMemo(() => {
           : b.lastModified?.getTime() || 0;
         result = aTime - bTime;
         break;
+      }
     }
 
     return fileSortOrder === 'asc' ? result : -result;
@@ -445,12 +455,12 @@ useEffect(() => {
     <thead>
       <tr>
         <th>
-          {/* <input
+          <input
             ref={selectAllRef}
             type="checkbox"
-            checked={cases?.length > 0 && selected.size === cases?.length}
+            checked={selected.size === cases?.length && cases?.length > 0}
             onChange={toggleSelectAll}
-          /> */}
+          />
         </th>
         {/* <th>Case Number</th> */}
         <th onClick={() => handleSort('case_number')} style={{ cursor: 'pointer' }}>
@@ -510,6 +520,8 @@ useEffect(() => {
       >
         Uploaded / Last Modified {fileSortKey === 'uploaded' && (fileSortOrder === 'asc' ? ' ▲' : ' ▼')}
       </th>
+      <th>Size</th>
+      <th>Actions</th>
     </tr>
   </thead>
 );
@@ -553,6 +565,22 @@ useEffect(() => {
   const renderFileRow = (item: any) => {
   const name = item.path.split('/').filter(Boolean).pop()!;
   const isFolder = item.path.endsWith('/');
+
+  
+
+
+  const handleView = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'view');
+    console.log('url: ', url)
+    window.open(url, '_blank');
+  };
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = await FileViewDownloadAPI.getSignedUrl(item.path, 'download');
+    window.location.href = url;
+  };
   
   // Try to match evidence by full path first, then by filename
   let evidence = evidenceByKey.get(item.path);
@@ -579,7 +607,7 @@ useEffect(() => {
         />
       </td>
 
-      <td>{isFolder ? '📁' : '📄'} {name}</td>
+      <td>{isFolder ? <FolderIcon color="primary" /> : '📄'} {name}</td>
 
       <td>
         {evidence ? evidence.evidence_number : '—'}
@@ -596,12 +624,33 @@ useEffect(() => {
             ? item.lastModified.toLocaleString()
             : '—'}
       </td>
+
+      <td>{formatBytes(item.size)}</td>
+      <td>
+
+        {!isFolder && (
+          <>
+            <div style={{display: 'flex', justifyContent:"center", alignItems:"center", gap:"8px"}}>
+                <Tooltip title="View">
+                  <IconButton onClick={handleView} color="primary">
+                    <VisibilityIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Download">
+                  <IconButton onClick={handleDownload} color="secondary">
+                    <DownloadIcon />
+                  </IconButton>
+                </Tooltip>
+            </div>
+          </>
+        )}
+      </td>
     </tr>
   );
 };
 
   const [open, setOpen] = useState(false)
-  const users = cognitoUsers
+  const users = filteredUsers
 
   const extractCaseNumber = (path: string) => {
     const parts = path.split("/");
@@ -610,37 +659,6 @@ useEffect(() => {
 
   return (
     <>
-      {/* {notification && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '20px',
-            right: '20px',
-            backgroundColor: notification.type === 'error' ? '#f44336' : '#4caf50',
-            color: 'white',
-            padding: '12px 16px',
-            borderRadius: '4px',
-            zIndex: 1000,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-            animation: 'slideIn 0.3s ease-in-out',
-          }}
-        >
-          {notification.message}
-        </div>
-      )} */}
-
-      {/* <style>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-      `}</style> */}
 
       <Flex
         justifyContent="space-between"
@@ -708,7 +726,7 @@ useEffect(() => {
           </div>
 
           {isRoot && (
-            <Button size='small' onClick={() => setOpen(true)}>
+            <Button size='small' onClick={() => setOpen(true)} disabled={selected.size === 0}>
               Share
             </Button>
           )}
@@ -773,7 +791,12 @@ useEffect(() => {
                       }
                     }
 
-                    await shareCaseTo(items);
+                    // await shareCaseTo(items);
+              console.log('Shared case items:', items);
+              await shareCaseTo(items);
+              console.log('closing dialog')
+              setOpen(false)
+              toast.success('Success')
                   }
 
                   /* =========================
@@ -824,7 +847,6 @@ useEffect(() => {
                 }
               }}
             />
-
           )}
 
           {/* <input
@@ -842,7 +864,7 @@ useEffect(() => {
             Refresh
           </Button>
 
-          <Button
+          {isRoot && (<Button
             size="small"
             variation="primary"
             isLoading={isGeneratingLink}
@@ -850,15 +872,39 @@ useEffect(() => {
             disabled={isGeneratingLink || !canGenerateLink}
             onClick={async () => {
               try {
-                setIsGeneratingLink(true);
+                // setIsGeneratingLink(true);
+                // console.log('selectedFilesssssssssssssssssss: ', selected)
+                // const case_number = selected
+                 const selectedArray = Array.from(selected);
+
+                    if (!selectedArray.length) return;
+
+                    const fullPath = selectedArray[0];
+
+                    // Remove trailing slash
+                    const trimmedPath = fullPath.replace(/\/$/, "");
+
+                    // Split by "/"
+                    const parts = trimmedPath.split("/");
+
+                    // Case number is last segment
+                    const case_number = parts[parts.length - 1];
+
+                    console.log("Extracted case number:", case_number);
+
+                    const link = `${window.location.origin}/access/${case_number}`;
+
+                    await navigator.clipboard.writeText(link);
+
+                    toast.success("Link copied to clipboard!");
 
                 // CASE 1: One or more files selected → ZIP only those files
-                if (selectedFiles.length > 0) {
-                  await generateAndCopyLink({
-                    objectKeys: selectedFiles,
-                  });
-                  return;
-                }
+                // if (selectedFiles.length > 0) {
+                //   await generateAndCopyLink({
+                //     objectKeys: selectedFiles,
+                //   });
+                //   return;
+                // }
                 // if (selectedEvidence.length > 0) {
                 //   await generateAndCopyLink({
                 //     objectKeys: selectedEvidence,
@@ -867,19 +913,19 @@ useEffect(() => {
                 // }
 
                 // CASE 2: Folder selected → ZIP that folder
-                if (selectedFolders.length === 1) {
-                  await generateAndCopyLink({
-                    folderPrefix: selectedFolders[0],
-                  });
-                  return;
-                }
+                // if (selectedFolders.length === 1) {
+                //   await generateAndCopyLink({
+                //     folderPrefix: selectedFolders[0],
+                //   });
+                //   return;
+                // }
 
                 // CASE 3: Inside folder, nothing selected → ZIP current folder
-                if (!isRoot && currentFolderPrefix) {
-                  await generateAndCopyLink({
-                    folderPrefix: currentFolderPrefix,
-                  });
-                }
+                // if (!isRoot && currentFolderPrefix) {
+                //   await generateAndCopyLink({
+                //     folderPrefix: currentFolderPrefix,
+                //   });
+                // }
               } catch (err) {
                 console.error(err);
               } finally {
@@ -889,18 +935,12 @@ useEffect(() => {
           >
             Generate link
           </Button>
+          )}
 
 
           {isRoot ? (
             <CreateCase
               basePath={`private/${identityId}/${currentPath}`}
-              // onCreated={async (payload: any) => {
-              //   // const created = await createCase(payload);
-              //   // const createdCase = JSON.parse(created['item'])
-              //   // createdCase.size = 16
-              //   // setCases((prev) => [...prev, createdCase])
-              // }}
-              disabled={loading || !identityId}
             />
             )
             :(

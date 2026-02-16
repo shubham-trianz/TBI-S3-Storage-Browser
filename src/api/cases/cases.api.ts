@@ -5,7 +5,8 @@ import {
   CreateCasePayload,
   EvidenceListResponse,
   ShareCaseToPayload,
-  ShareExternalPayload
+  ShareExternalPayload,
+  ReceivedCase
 } from "./cases.types";
 
 export const CasesAPI = {
@@ -21,7 +22,8 @@ export const CasesAPI = {
     shareExternal(payload: ShareExternalPayload): Promise<void> {
     return apiClient.post('/share-external', payload).then(res => res.data);
   },
-    getReceivedCaseByUser(userId: string): Promise<void> {
+    // getReceivedCaseByUser(userId: string): Promise<void> {
+    getReceivedCaseByUser(userId: string): Promise<ReceivedCase> {
         return apiClient.get('/get-received-case', {params: {
             user_id: userId
         }}).then(res => res.data)

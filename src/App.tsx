@@ -23,11 +23,13 @@ import { useEffect } from 'react';
 import React from 'react';
 
 Amplify.configure(config);
+import { ReactNode } from "react";
+import { AccessResolver } from './components/utils/AccessResolver';
 
 /* -----------------------------------------
    Auth Guard for External Users (Session Token Based)
 ------------------------------------------ */
-function RequireExternalAuth({ children }: { children: JSX.Element }) {
+function RequireExternalAuth({ children }: { children: ReactNode}) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isChecking, setIsChecking] = React.useState(true);
@@ -87,7 +89,7 @@ function RequireExternalAuth({ children }: { children: JSX.Element }) {
 /* -----------------------------------------
    Auth Guard
 ------------------------------------------ */
-function RequireAuth({ children }: { children: JSX.Element }) {
+function RequireAuth({ children }: { children: ReactNode }) {
   const { authStatus } = useAuthenticator((context) => [context.authStatus]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -106,9 +108,18 @@ function RequireAuth({ children }: { children: JSX.Element }) {
       });
     }
   }, [authStatus, navigate, location]);
+  if (authStatus === 'unauthenticated') {
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location.pathname + location.search }}
+        replace
+      />
+    );
+  }
 
   if (authStatus !== 'authenticated') {
-    return null;
+    return null; // still loading
   }
 
   return children;
@@ -125,9 +136,9 @@ function LoginPage() {
   useEffect(() => {
     if (authStatus === 'authenticated') {
       const from = (location.state as any)?.from || '/personal';
-      
+
       console.log('🔍 Redirecting after login to:', from); // Debug log
-      
+
       navigate(from, { replace: true });
     }
   }, [authStatus, navigate, location]);
@@ -159,7 +170,18 @@ function AuthenticatedApp() {
 
   return (
     <UserContext.Provider value={{ user_name, email, signOut }}>
-      <Toaster position="bottom-right" reverseOrder={false} />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            borderRadius: "12px",
+            background: "#252222",
+            color: "#fff",
+            padding: "16px",
+          },
+        }}
+      />
 
       <Routes>
         {/* Prevent logged-in users from visiting login */}
@@ -167,6 +189,17 @@ function AuthenticatedApp() {
 
         {/* Default route */}
         <Route path="/" element={<Navigate to="/personal" replace />} />
+
+        {/* 🔓 Secure share route (NOT wrapped in RequireAuth) */}
+        <Route path="/secure-view" element={<SecureSharePage />} />
+        <Route
+          path="/access/:caseId"
+          element={
+            <RequireAuth>
+              <AccessResolver />
+            </RequireAuth>
+          }
+        />
 
         {/* Protected pages */}
         <Route
