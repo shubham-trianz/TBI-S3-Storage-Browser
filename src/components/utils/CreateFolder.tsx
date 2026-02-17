@@ -9,6 +9,10 @@ import {
   TextField,
 } from "@mui/material";
 
+import { CreateFolderAPI } from "../../api/createfolder";
+import toast from "react-hot-toast";
+import { useQueryClient } from "@tanstack/react-query";
+
 type CreateFolderProps = {
   basePath: string;
   onCreated: () => void;
@@ -16,6 +20,7 @@ type CreateFolderProps = {
   onDuplicateError?: (message: string, type: 'error' | 'success') => void;
   folderExists?: (folderName: string) => boolean;
   refreshFiles?: () => Promise<void>;
+  receivedTab?: boolean
 };
 
 export const CreateFolder = ({
@@ -25,12 +30,13 @@ export const CreateFolder = ({
   onDuplicateError,
   folderExists,
   refreshFiles,
+  receivedTab,
 }: CreateFolderProps) => {
   const [open, setOpen] = useState(false);
   const [folderName, setFolderName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
+  const queryClient = useQueryClient();
   const handleOpen = () => {
     setFolderName("");
     setError(null);
@@ -58,6 +64,8 @@ export const CreateFolder = ({
         await refreshFiles();
       }
 
+
+
       // Now check if folder already exists with fresh data
       if (folderExists && folderExists(folderName)) {
         const message = `"${folderName}" already exists. Try with another name?`;
@@ -68,16 +76,35 @@ export const CreateFolder = ({
       }
 
       const folderPath = `${basePath}${folderName}/`;
+      console.log('folderPath: ', folderPath)
+      if(receivedTab){
+        console.log('calling from received tab')
+        const result =  await CreateFolderAPI.createFolder(folderPath)
+        console.log('result: ', result)
+        if(result.status == 200){
+          
 
-      await uploadData({
+        queryClient.invalidateQueries({
+            queryKey: ["files"],
+        });
+        toast.success(`${result.data}`)
+        }
+      }else{
+        await uploadData({
         path: folderPath,
         data: new Blob([]),
       }).result;
+      }
+      
 
       onDuplicateError?.(`"${folderName}" created successfully`, 'success');
-      setOpen(false);
+      setOpen(false)
       onCreated();
-    } catch (err) {
+    } catch (err: any) {
+      if (err.status === 401) {
+        toast.error('Access Denied')
+        setOpen(false);
+      }
       console.error("Error creating folder", err);
       setError("Failed to create folder");
     } finally {

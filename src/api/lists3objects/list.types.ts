@@ -1,6 +1,6 @@
 export interface FileType {
   lastModified: string,
-  path: string,
+  Key: string,
   size: string,
   type: string,
 }

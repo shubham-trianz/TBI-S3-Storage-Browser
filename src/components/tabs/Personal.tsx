@@ -11,15 +11,7 @@ import { CreateCase } from '../utils/CreateCase';
 import { CreateFolder } from '../utils/CreateFolder';
 import Breadcrumbs from "../utils/Breadcrumbs"
 import { useCases, useShareCaseTo, useShareExternal } from '../../hooks/cases';
-// import ShareDialog from '../utils/ShareDialog';
-// import { useCases } from '../../hooks/cases';
 import { useCaseEvidence } from '../../hooks/useCaseEvidence';
-// import { useDeleteEvidence } from '../../hooks/useDeleteEvidence';
-import FolderIcon from "@mui/icons-material/Folder";
-import DownloadIcon from "@mui/icons-material/Download";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-
-import { FileViewDownloadAPI } from '../../api/viewdownload';
 
 import CasesGrid from '../utils/CaseTable';
 
@@ -78,7 +70,7 @@ export const Personal = () => {
   const { data: cases, isLoading } = useCases();
   const { mutate: shareCaseTo } = useShareCaseTo();
 
-  
+    console.log('casesss: ', cases)
 
   const s3Ref = useRef<any>(null);
   useEffect(() => {
@@ -112,7 +104,7 @@ export const Personal = () => {
   return map;
 }, [evidenceData]);
 
-
+  console.log('evidenceByKey: ', evidenceByKey)
   const rootFolderPrefix = identityId
   ? `private/${identityId}/`
   : null;
@@ -172,11 +164,14 @@ export const Personal = () => {
           evidenceByKey.get(fileName) ||
           null;
 
+        const { s3_key, ...restMetadata } = metadata;
         return {
           ...item,
-          ...metadata, 
+          ...restMetadata, 
+          source_key: s3_key,
         };
       });
+      console.log('mergedItemssss: ', mergedItems)
       setFiles(mergedItems);
     } catch (err) {
       console.error('Error listing files', err);

@@ -1,5 +1,5 @@
 // import { list } from 'aws-amplify/storage';
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 // import { fetchAuthSession } from 'aws-amplify/auth';
 import {
   Flex,
@@ -7,58 +7,30 @@ import {
   Divider,
 } from "@aws-amplify/ui-react";
 import { UploadButton } from "../utils/UploadButton";
-// import { DeleteObjects } from "../utils/DeleteObjects";
-// import { CreateCase } from '../utils/CreateCase';
-// import { CreateFolder } from '../utils/CreateFolder';
-// import { generateAndCopyLink } from "../utils/generateLink";
 import Breadcrumbs from "../utils/Breadcrumbs"
 import { useReceivedCases } from '../../hooks/cases';
 import { useUser } from '../../context/UserContext';
 import { useListS3Objects } from '../../hooks/lists3objects';
 import { useCaseEvidence } from '../../hooks/useCaseEvidence';
-import { FileViewDownloadAPI } from '../../api/viewdownload';
-import { IconButton, Tooltip } from '@mui/material';
-import DownloadIcon from "@mui/icons-material/Download";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import { CreateFolder } from '../utils/CreateFolder';
-// import { useCases 
-// } from '../../hooks/cases';
-// type CaseItem = {
-//   case_number: string;
-//   case_title: string;
-//   jurisdiction: string;
-//   case_agents: string;
-//   email: string;
-//   user_name: string;
-//   size?: number;
-// };
 
 import CasesGrid from '../utils/CaseTable';
+import { CreateFolder } from '../utils/CreateFolder';
 
 
 export const Received = () => {
     const { user_name } = useUser()
 
-  // const params = new URLSearchParams(location.search)
-  // const caseId = params.get('caseId')
-  // console.log('caseId: ', caseId)
+  
 
-  // const [files, setFiles] = useState<any[]>([]);
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  // const [casesLoading, setCasesLoading] = useState(true);
+  // const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [filesLoading, setFilesLoading] = useState(true);
-  // const viewMode = isRoot ? "cases" : "files";
 
 
   const {data: receivedCases, isLoading: casesLoading} = useReceivedCases(user_name)
   console.log('receivedCases: ', receivedCases)
   const cases = receivedCases?.cases;
 
-// useEffect(() => {
-//   if (receivedCases) {
-//     setCasesLoading(false);
-//   }
-// }, [receivedCases]);
+
   const [files, setFiles] = useState<any[]>([]);
   const [baseKey, setBaseKey] = useState<string | null>(null); // case root
   const [activeCase, setActiveCase] = useState<null | {
@@ -66,20 +38,13 @@ export const Received = () => {
     canWrite: boolean;
   }>(null);
   const isInsideCase = activeCase !== null;
-  console.log('isInsideCase: ', isInsideCase)
-  console.log('activeCase: ', activeCase)
   // const [loading, setLoading] = useState(true);
   // const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  // const [cases, setCases] = useState<CaseItem[]>([]);
-  // const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const currentPath = pathStack.join('');
   
-  // Get current case number from pathStack
   const currentCaseNumber = pathStack.length > 0 ? pathStack[0].replace('/', '') : null;
   
-  // Fetch evidence metadata for the current case
   const {
     data: evidenceData,
     isLoading: isEvidenceLoading,
@@ -87,14 +52,11 @@ export const Received = () => {
     refetch: refetchEvidence,
   } = useCaseEvidence(currentCaseNumber ?? '');
 
-  // Create evidence lookup map
   const evidenceByKey = useMemo(() => {
     const map = new Map<string, any>();
     evidenceData?.items?.forEach(ev => {
-      // Map by full s3_key
       map.set(ev.s3_key, ev);
       
-      // Also map by filename only for easier lookup
       const filename = ev.s3_key?.split('/').pop();
       if (filename) {
         map.set(filename, ev);
@@ -105,23 +67,16 @@ export const Received = () => {
 
   
 
-  console.log('evidenceData: ', evidenceData);
-  console.log('evidenceByKey: ', evidenceByKey);
 
-  // const currentPrefix = pathStack[pathStack.length - 1];
   const normalizedBaseKey = baseKey
   ? baseKey.endsWith('/')
     ? baseKey
     : `${baseKey}/`
   : null;
-  // const currentPrefix = baseKey
-  // ? `${baseKey}${pathStack.length ? pathStack.join('/') + '/' : ''}`
-  // : null;
   const currentPrefix = normalizedBaseKey
   ? `${normalizedBaseKey}${pathStack.length ? pathStack.join('')  : ''}`
   : null;
-  console.log('currentPrefix: ', currentPrefix)
-  console.log('pathStack: ', pathStack)
+
   const { data: receivedFiles} = useListS3Objects(currentPrefix);
   console.log('objectssssssssssssssssssssss: ', receivedFiles)
   // useEffect(() => setFiles(objects), [currentPrefix])
@@ -136,30 +91,30 @@ export const Received = () => {
 
   // const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
   // const selectedFolders = [...selected].filter(p => p.endsWith("/"));
-  const selectAllRef = useRef<HTMLInputElement>(null);
-  const [searchField, setSearchField] = useState<SearchField>('case_number');
-  const [evidenceSearchField, setEvidenceSearchField] = useState<EvidenceSearchField>('name');
-  const [searchValue, setSearchValue] = useState('');
+  // const selectAllRef = useRef<HTMLInputElement>(null);
+  // const [searchField, setSearchField] = useState<SearchField>('case_number');
+  // const [evidenceSearchField, setEvidenceSearchField] = useState<EvidenceSearchField>('name');
+  // const [searchValue, setSearchValue] = useState('');
   // const { data: cases, isLoading } = useCases();
   // console.log('cases: ', cases)
   
 
   
   
-  type SearchField = 'case_number' | 'case_title' | 'case_agents';
-  type EvidenceSearchField = 'name' | 'evidence_number' | 'description';
+  // type SearchField = 'case_number' | 'case_title' | 'case_agents';
+  // type EvidenceSearchField = 'name' | 'evidence_number' | 'description';
 
-  const SEARCH_FIELDS: { key: SearchField; label: string }[] = [
-    { key: 'case_number', label: 'Case Number' },
-    { key: 'case_title', label: 'Case Title' },
-    { key: 'case_agents', label: 'Case Agent' }
-  ];
+  // const SEARCH_FIELDS: { key: SearchField; label: string }[] = [
+  //   { key: 'case_number', label: 'Case Number' },
+  //   { key: 'case_title', label: 'Case Title' },
+  //   { key: 'case_agents', label: 'Case Agent' }
+  // ];
 
-  const EVIDENCE_SEARCH_FIELDS: { key: EvidenceSearchField; label: string }[] = [
-    { key: 'name', label: 'File Name' },
-    { key: 'evidence_number', label: 'Evidence Number' },
-    { key: 'description', label: 'Description' }
-  ];
+  // const EVIDENCE_SEARCH_FIELDS: { key: EvidenceSearchField; label: string }[] = [
+  //   { key: 'name', label: 'File Name' },
+  //   { key: 'evidence_number', label: 'Evidence Number' },
+  //   { key: 'description', label: 'Description' }
+  // ];
 
   // type SortKey = 'case_number' | 'case_title' | 'case_agents' | 'size';
   // type SortOrder = 'asc' | 'desc';
@@ -338,9 +293,9 @@ export const Received = () => {
   //   init();
   // }, []);
 
-  const filesList = useMemo(() => {
-  return receivedFiles ?? [];
-}, [receivedFiles]);
+//   const filesList = useMemo(() => {
+//   return receivedFiles ?? [];
+// }, [receivedFiles]);
 
   // const loadFiles = useCallback(async () => {
   //     // setLoading(true);
@@ -395,9 +350,7 @@ export const Received = () => {
       if (item.type === "folder") return item;
 
       const fullKey = item.Key;
-      const fileName = fullKey?.split("/").pop();
-      console.log('fullKey: ', fullKey)
-      console.log('fileName: ', fileName)
+      const fileName = fullKey.split("/").pop() || ''
       const metadata =
         evidenceByKey.get(fullKey) ||
         evidenceByKey.get(fileName) ||
@@ -416,11 +369,11 @@ export const Received = () => {
     setFilesLoading(false);
   }
 }, [receivedFiles, evidenceByKey, currentPath]);
-  console.log('myyyyyyyyyyfiless: ', files)
-  const formatBytes = (bytes?: number) =>
-    bytes
-      ? `${(bytes / 1024 / 1024).toFixed(2)} MB`
-      : '—';
+  // console.log('myyyyyyyyyyfiless: ', files)
+  // const formatBytes = (bytes?: number) =>
+  //   bytes
+  //     ? `${(bytes / 1024 / 1024).toFixed(2)} MB`
+  //     : '—';
 
   
 
@@ -436,8 +389,10 @@ function handleRowClick(params: any) {
     console.log('rows: ', row)
     // setFiles([]);
     setFilesLoading(true);   
-    
-
+    setActiveCase({
+      caseNumber: row.case_number,
+      canWrite: row.permissions === "Read / Update"? true: false 
+    });
 
     let name: string;
     if(viewMode === 'received'){
@@ -452,7 +407,7 @@ function handleRowClick(params: any) {
       name = row.name
       setPathStack(prev => [...prev, `${name}/`]);
     }
-    setSelected(new Set());
+    // setSelected(new Set());
   }
 
   // useEffect(() => {
@@ -697,10 +652,19 @@ function handleRowClick(params: any) {
             Generate link
           </Button>
            */}
+           {isInsideCase && activeCase.canWrite && (
+            <CreateFolder
+              basePath={`${baseKey}${pathStack.join('')}`}
+              receivedTab={true}
+              onCreated={() => {
+                // loadFiles();
+              }}
+            />
+           )}
             
           {isInsideCase && activeCase.canWrite && (
             <UploadButton
-              prefix={`${baseKey}${pathStack.join('')}/`}
+              prefix={`${baseKey}${pathStack.join('')}`}
               onUploaded={async () => {
                 // Refetch evidence metadata after upload
                 if (currentCaseNumber) {
@@ -727,6 +691,7 @@ function handleRowClick(params: any) {
           setPathStack(x)
         }}
         onExitCase={() => {
+          setActiveCase(null)
           setFiles([]);
           setBaseKey(null);
           setFilesLoading(true)
@@ -738,7 +703,7 @@ function handleRowClick(params: any) {
         loading={viewMode === "received" ? casesLoading : filesLoading}
         handleRowClick={handleRowClick}
         viewMode={viewMode}
-        handleSelected={(selected: any) => setSelectedRows(selected)}
+        // handleSelected={(selected: any) => setSelectedRows(selected)}
       />
 
       

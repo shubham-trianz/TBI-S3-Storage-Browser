@@ -10,19 +10,85 @@ import DownloadIcon from "@mui/icons-material/Download";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useMemo } from "react";
 
+import {
+  Case,
+  ShareCaseToPayload,
+} from "../../api/cases/cases.types";
 
-
-
-interface CaseRow {
-  id: string;
-  case_number: string;
-  case_title: string;
-  case_agents: string;
-  jurisdiction: string;
-  size: number;
+export interface S3BaseObject {
+  Key: string;
+  type?: "folder"; // only present for folders
 }
 
-export default function CasesGrid({ data, loading, handleRowClick, viewMode, handleSelected }) {
+
+interface S3File extends S3BaseObject {
+  type?: undefined; // files don't have "folder"
+
+  LastModified: string;
+  ETag: string;
+  ChecksumAlgorithm?: string[];
+  ChecksumType?: string;
+  Size: number;
+  StorageClass: string;
+
+  // Evidence metadata
+  case_number: string;
+  content_type: string;
+  evidence_seq: number;
+  uploaded_at: string;
+  uploaded_by: string;
+  description?: string;
+
+  PK: string;
+  SK: string;
+  source_key: string;
+  evidence_number: string;
+}
+
+
+interface CommonGridProps {
+  loading: boolean;
+  handleRowClick: (params: unknown) => void;
+  handleSelected?: (params: unknown) => void;
+}
+
+interface CasesModeProps extends CommonGridProps {
+  viewMode: "cases";
+  data: Case[];
+}
+
+interface FilesModeProps extends CommonGridProps {
+  viewMode: "files";
+  data: S3File[];
+}
+
+interface ReceivedModeProps extends CommonGridProps {
+  viewMode: "received";
+  data: ShareCaseToPayload[];
+}
+
+type GridProps =
+  | CasesModeProps
+  | FilesModeProps
+  | ReceivedModeProps;
+// 🔥 Step 2 — Narrow Inside Component
+// Now inside CasesGrid:
+
+// export default function CasesGrid(props: GridProps) {
+
+
+
+
+// interface GridProps {
+//   data: (Case | ShareCaseToPayload | S3File)[],
+//   loading: boolean,
+//   handleRowClick: (params: any) => void,
+//   viewMode: 'cases' | 'files' | 'received',
+//   handleSelected?: (params: any) => void,
+// }
+
+export default function CasesGrid(props: GridProps) {
+   const { viewMode, data, loading, handleRowClick, handleSelected } = props;
     // const [loading, setLoading] = useState(true);
 
   const caseColumns: GridColDef[] = [
@@ -450,7 +516,7 @@ const columns = useMemo(() => {
           let selectedIds: string[] = [];
           console.log('modelllll: ', model)
           if (model.type === 'include') {
-            selectedIds = Array.from(model.ids);
+            selectedIds = Array.from(model.ids).map(String);;
           } else {
             // Select-all mode
             const excludedIds = model.ids;
@@ -458,7 +524,7 @@ const columns = useMemo(() => {
             selectedIds = data.map((row) => row.source_key).filter(id => !excludedIds.has(id))
           }
           console.log('selectedIdsssssssss: ', selectedIds)
-          handleSelected(selectedIds);
+          handleSelected?.(selectedIds);
         }}
         disableRowSelectionOnClick
         checkboxSelection
