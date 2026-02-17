@@ -1,4 +1,4 @@
-import { remove } from "aws-amplify/storage";
+import { remove, list } from "aws-amplify/storage";
 import { Button, Flex } from "@aws-amplify/ui-react";
 import { useEffect, useState } from "react";
 import {
@@ -64,8 +64,34 @@ export const DeleteObjects = ({
     setConfirmOpen(true);
   };
 
+  const isFolderWithObjects = async (path: string) => {
+  if (!path.endsWith("/")) return false;
+
+  const result = await list({
+    path,
+    options: { listAll: true },
+  });
+  const realChildren = result.items.filter(
+    (item) => item.path !== path
+  );
+  return realChildren.length > 0;
+};
+
+
   const performDelete = async () => {
     setConfirmOpen(false);
+
+    for (const path of selectedPaths) {
+      const hasChildren = await isFolderWithObjects(path);
+
+      if (hasChildren) {
+        setErrorMsg(
+          "Cannot delete a folder that contains objects. Please delete its contents first."
+        );
+        setErrorOpen(true);
+        return; // Stop execution
+      }
+    }
 
     try {
       if (currentCaseNumber) {
@@ -106,14 +132,6 @@ export const DeleteObjects = ({
     }
   };
 
-  useEffect(() => {
-    if (!errorOpen) return;
-    const timer = setTimeout(() => {
-      setErrorOpen(false);
-      setErrorMsg(null);
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [errorOpen]);
 
   return (
     <>
