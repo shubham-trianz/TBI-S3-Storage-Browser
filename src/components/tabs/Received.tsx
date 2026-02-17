@@ -388,11 +388,9 @@ function handleRowClick(params: any) {
     const row = params.row
     console.log('rows: ', row)
     // setFiles([]);
-    setFilesLoading(true);   
-    setActiveCase({
-      caseNumber: row.case_number,
-      canWrite: row.permissions === "Read / Update"? true: false 
-    });
+    setFilesLoading(true); 
+
+    
 
     let name: string;
     if(viewMode === 'received'){
@@ -402,6 +400,10 @@ function handleRowClick(params: any) {
           removeLastPathSegment(row.source_key)
         );
         setPathStack([`${row.case_number}/`]);
+        setActiveCase({
+          caseNumber: row.case_number,
+          canWrite: row.permissions === "Read / Update"? true: false 
+        });
     }
     else{
       name = row.name

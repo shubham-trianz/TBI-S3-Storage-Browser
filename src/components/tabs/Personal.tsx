@@ -163,12 +163,13 @@ export const Personal = () => {
           evidenceByKey.get(fullKey) ||
           evidenceByKey.get(fileName) ||
           null;
-
-        const { s3_key, ...restMetadata } = metadata;
+        console.log('metadataaa: ', metadata)
+        // const { s3_key, ...restMetadata } = metadata;
         return {
           ...item,
-          ...restMetadata, 
-          source_key: s3_key,
+          ...metadata
+          // ...restMetadata, 
+          // source_key: s3_key,
         };
       });
       console.log('mergedItemssss: ', mergedItems)
