@@ -12,7 +12,7 @@ import {
   Box,
 } from "@mui/material";
 import { Pause, PlayArrow } from "@mui/icons-material";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useUser } from "../../context/UserContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFileUploader } from "../../hooks/useMultipartUpload";
@@ -22,6 +22,7 @@ type Props = {
   onClose: () => void;
   prefix: string;
   onUploaded?: () => void;
+  initialFile?: File | null;
 };
 
 export function UploadDialog({
@@ -29,6 +30,7 @@ export function UploadDialog({
   onClose,
   prefix,
   onUploaded,
+  initialFile
 }: Props) {
   const { user_name } = useUser();
   const queryClient = useQueryClient();
@@ -39,6 +41,19 @@ export function UploadDialog({
   const evidenceNumberRef = useRef<HTMLInputElement | null>(null);
   const evidenceDescriptionRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialFile) {
+      setFile(initialFile);
+    }
+  }, [initialFile]);
+
+  useEffect(() => {
+  if (!open) {
+    setFile(null);
+    setError(null);
+  }
+  }, [open]);
 
   const {
     uploadMutation,

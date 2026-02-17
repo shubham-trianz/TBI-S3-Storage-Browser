@@ -83,6 +83,40 @@ export const Personal = () => {
   
   const { data: cognitoUsers,  } = useCognitoUser()
 
+  const [isDragging, setIsDragging] = useState(false);
+  const [droppedFile, setDroppedFile] = useState<File | null>(null);
+
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    if (!identityId) return;
+
+    const files = Array.from(e.dataTransfer.files || []);
+    if (!files.length) return;
+
+    setDroppedFile(null);
+
+    setTimeout(() => {
+      setDroppedFile(files[0]);
+    }, 0);
+};
+
+
   const filteredUsers = cognitoUsers?.filter(item => item.email != email)
   
   // const [selectedEvidence, setSelectedEvidence] = useState<string[]>([]);
@@ -964,7 +998,9 @@ useEffect(() => {
           {identityId && !isRoot && (
           <UploadButton
             prefix={`private/${identityId}/${currentPath}`}
+            droppedFile={droppedFile}
             onUploaded={async () => {
+              setDroppedFile(null);
               await loadFiles();
               if (currentCaseNumber) {
                 setTimeout(() => {
@@ -996,7 +1032,18 @@ useEffect(() => {
 
         {/* ================= CASE = EVIDENCE + FILES ================= */}
         {!isRoot && pathStack.length === 1 && (
-          <>
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            style={{
+              border: isDragging ? "2px dashed #1976d2" : "2px dashed transparent",
+              borderRadius: "8px",
+              padding: "8px",
+              transition: "0.2s",
+              minHeight: "400px"
+            }}
+          >
             {(isEvidenceLoading || isEvidenceFetching) && (
               <div style={{ padding: '1rem', textAlign: 'center', background: '#f0f0f0' }}>
                 Loading evidence metadata...
@@ -1008,16 +1055,29 @@ useEffect(() => {
                 {!loading && sortedFiles.map(renderFileRow)}
               </tbody>
             </table>
-          </>
+          </div>
         )}
         {/* ================= SUBFOLDER = FILES ONLY ================= */}
         {!isRoot && pathStack.length > 1 && (
-          <table className="storage-table">
-            <FilesTableHeader />
-            <tbody>
-              {!loading && sortedFiles.map(renderFileRow)}
-            </tbody>
-          </table>
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            style={{
+              border: isDragging ? "2px dashed #1976d2" : "2px dashed transparent",
+              borderRadius: "8px",
+              padding: "8px",
+              transition: "0.2s",
+              minHeight: "400px"
+            }}
+          >
+            <table className="storage-table">
+              <FilesTableHeader />
+              <tbody>
+                {!loading && sortedFiles.map(renderFileRow)}
+              </tbody>
+            </table>
+          </div>
         )}
     </>
   );
