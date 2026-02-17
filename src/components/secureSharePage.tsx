@@ -324,7 +324,7 @@ export const SecureSharePage = () => {
             
             if (evidenceResponse.items && evidenceResponse.items.length > 0) {
               evidenceResponse.items.forEach((evidence: EvidenceItem) => {
-                evidenceMap.set(evidence.s3_key, evidence);
+                evidenceMap.set(evidence.source_key, evidence);
               });
             }
             
