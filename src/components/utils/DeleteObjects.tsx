@@ -29,6 +29,7 @@ export const DeleteObjects = ({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [errorOpen, setErrorOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { user_name } = useUser();
   const queryClient = useQueryClient();
@@ -79,21 +80,25 @@ export const DeleteObjects = ({
 
 
   const performDelete = async () => {
-    setConfirmOpen(false);
-
-    for (const path of selectedPaths) {
-      const hasChildren = await isFolderWithObjects(path);
-
-      if (hasChildren) {
-        setErrorMsg(
-          "Cannot delete a folder that contains objects. Please delete its contents first."
-        );
-        setErrorOpen(true);
-        return; // Stop execution
-      }
-    }
+    
 
     try {
+      setIsDeleting(true);
+
+      for (const path of selectedPaths) {
+        const hasChildren = await isFolderWithObjects(path);
+
+        if (hasChildren) {
+          setErrorMsg(
+            "Cannot delete a folder that contains objects. Please delete its contents first."
+          );
+          setErrorOpen(true);
+          setIsDeleting(false);
+          return; 
+        }
+      }
+
+    
       if (currentCaseNumber) {
         await deleteEvidence({
           caseNumber: currentCaseNumber,
@@ -125,10 +130,14 @@ export const DeleteObjects = ({
       );
 
       onDeleted();
+      setConfirmOpen(false);
     } catch (err) {
       console.error("Delete failed:", err);
       setErrorMsg("Failed to delete one or more items.");
       setErrorOpen(true);
+    }finally{
+      setIsDeleting(false);
+      setConfirmOpen(false);
     }
   };
 
@@ -158,7 +167,8 @@ export const DeleteObjects = ({
           <Button variation="link" onClick={() => setConfirmOpen(false)}>
             Cancel
           </Button>
-          <Button variation="destructive" onClick={performDelete}>
+          <Button variation="destructive" onClick={performDelete} isLoading={isDeleting}
+          loadingText="Deleting...">
             Delete
           </Button>
         </DialogActions>
