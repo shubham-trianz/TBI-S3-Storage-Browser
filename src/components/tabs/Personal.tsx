@@ -427,6 +427,7 @@ export const Personal = () => {
             droppedFile={droppedFile}
             onClearDroppedFile={() => setDroppedFile(null)} 
             onUploaded={async () => {
+              loadFiles()
               setDroppedFile(null);
               if (currentCaseNumber) {
                 setTimeout(() => {
