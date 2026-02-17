@@ -12,7 +12,7 @@ import {
   Box,
 } from "@mui/material";
 import { Pause, PlayArrow } from "@mui/icons-material";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useUser } from "../../context/UserContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFileUploader } from "../../hooks/useMultipartUpload";
@@ -22,6 +22,7 @@ type Props = {
   onClose: () => void;
   prefix: string;
   onUploaded?: () => void;
+  initialFile?: File | null;
 };
 
 export function UploadDialog({
@@ -29,6 +30,7 @@ export function UploadDialog({
   onClose,
   prefix,
   onUploaded,
+  initialFile
 }: Props) {
   const { user_name } = useUser();
   const queryClient = useQueryClient();
@@ -48,6 +50,19 @@ export function UploadDialog({
     isPaused,
     isNetworkError
   } = useFileUploader();
+
+  useEffect(() => {
+    if (initialFile) {
+      setFile(initialFile);
+    }
+  }, [initialFile]);
+
+  useEffect(() => {
+  if (!open) {
+    setFile(null);
+    setError(null);
+  }
+}, [open]);
 
   // const validateEvidenceNumber = (value: string) =>
   //   /^\d{4}-\d{7}-E\d+$/.test(value);
@@ -104,8 +119,10 @@ export function UploadDialog({
     <Dialog 
       open={open} 
       onClose={(reason) => {
-        if(reason == 'backdropClick') return
-        onClose()
+        if(reason == 'backdropClick') return;
+        setFile(null);
+        setError(null);
+        onClose();
       }} 
       maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 600 }}>
@@ -207,8 +224,13 @@ export function UploadDialog({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose}>
-          Cancel
+        <Button 
+          onClick={() => {
+            setFile(null);        
+            setError(null);
+            onClose();            
+          }}>
+            Cancel
         </Button>
 
         <Button
