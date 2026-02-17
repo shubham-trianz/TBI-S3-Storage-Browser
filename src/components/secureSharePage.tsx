@@ -22,7 +22,6 @@ import {
   FileCode,
   Download,
   HardDrive,
-  Hash,
   FileCheck,
   CheckSquare,
   Square,
@@ -62,11 +61,11 @@ export const SecureSharePage = () => {
   const [isAccessChecking, setIsAccessChecking] = useState(true);
 
   // Case and Evidence metadata
+  const [isPreviewExpired, setIsPreviewExpired] = useState(false);
+
   const [caseMetadata, setCaseMetadata] = useState<Case | null>(null);
   const [evidenceMetadata, setEvidenceMetadata] = useState<Map<string, EvidenceItem>>(new Map());
-  // const [metadataLoading, setMetadataLoading] = useState(false);
 
-  // 🔐 Track if expiration warning was shown
   const warningShownRef = useRef(false);
 
   const prefix = searchParams.get("prefix");
@@ -74,14 +73,12 @@ export const SecureSharePage = () => {
 
   const folderName = prefix?.split("/").filter(Boolean).pop() || "Shared Folder";
   
-  // Reset expired state when prefix changes (new link)
   useEffect(() => {
     setIsExpired(false);
     setPreviewUrl(null);
     warningShownRef.current = false;
   }, [prefix]);
   
-  // 🔐 Monitor token expiration and force logout
   useEffect(() => {
     const monitorExpiration = () => {
       const expiry = localStorage.getItem('external_token_expiry');
@@ -91,7 +88,6 @@ export const SecureSharePage = () => {
       const now = Date.now();
       const timeLeft = expiryTime - now;
 
-      // Show warning 5 seconds before expiry
       if (timeLeft <= 5000 && timeLeft > 0 && !warningShownRef.current) {
         warningShownRef.current = true;
         toast.error(
@@ -106,26 +102,21 @@ export const SecureSharePage = () => {
         );
       }
 
-      // Force logout on expiry
       if (timeLeft <= 0) {
         console.log("🔒 Session expired - forcing logout");
         
-        // Clear all external auth data
         localStorage.removeItem('external_access_token');
         localStorage.removeItem('external_token_expiry');
         localStorage.removeItem('external_user_email');
         
-        // Set expired state to show full-screen message
         setIsExpired(true);
       }
     };
 
-    // Check every 500ms for precise timing
     const interval = setInterval(monitorExpiration, 500);
     return () => clearInterval(interval);
   }, [navigate]);
   
-  // Check authentication status
   useEffect(() => {
     const checkAuth = () => {
       try {
@@ -155,49 +146,49 @@ export const SecureSharePage = () => {
     checkAuth();
   }, [navigate]);
 
-  // 🔐 Validate share access before loading content
-useEffect(() => {
-  const validateAccess = async () => {
-    if (!isAuthenticated || !prefix) return;
+  useEffect(() => {
+    const validateAccess = async () => {
+      if (!isAuthenticated || !prefix) return;
 
-    try {
-      setIsAccessChecking(true);
+      try {
+        setIsAccessChecking(true);
 
-      const token = localStorage.getItem("external_access_token");
+        const email = localStorage.getItem("external_user_email");
 
-      const res = await fetch(
-        `${API_BASE}/external-share-info?prefix=${encodeURIComponent(prefix)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        if (!email) {
+          throw new Error("No external email found");
         }
-      );
 
-      if (!res.ok) {
-        throw new Error("Access denied");
+        const res = await fetch(
+          `${API_BASE}/external-share-info?email=${encodeURIComponent(email)}&prefix=${encodeURIComponent(prefix)}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error("Access denied");
+        }
+
+        setIsAccessDenied(false);
+      } catch (err) {
+        console.error("Access validation failed:", err);
+
+        localStorage.removeItem("external_access_token");
+        localStorage.removeItem("external_token_expiry");
+        localStorage.removeItem("external_user_email");
+
+        setIsAccessDenied(true);
+      } finally {
+        setIsAccessChecking(false);
       }
+    };
 
-      setIsAccessDenied(false);
-    } catch (err) {
-      console.error("Access validation failed:", err);
+    validateAccess();
+  }, [isAuthenticated, prefix]);
 
-      // Clear session immediately
-      localStorage.removeItem("external_access_token");
-      localStorage.removeItem("external_token_expiry");
-      localStorage.removeItem("external_user_email");
-
-      setIsAccessDenied(true);
-    } finally {
-      setIsAccessChecking(false);
-    }
-  };
-
-  validateAccess();
-}, [isAuthenticated, prefix]);
-
-  
-  // Extract case number from prefix
   const extractCaseNumber = (prefixStr: string | null): string | null => {
     if (!prefixStr) return null;
     
@@ -213,18 +204,17 @@ useEffect(() => {
   
   const caseNumber = extractCaseNumber(prefix);
 
-  // Helper Functions
   const getFileIcon = (fileName: string) => {
     const lower = fileName.toLowerCase();
     if (lower.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/))
-      return <Image size={16} />;
+      return <Image size={16} color="#6b7280" />;
     if (lower.match(/\.(mp4|webm|ogg|avi|mov)$/))
-      return <Film size={16} />;
+      return <Film size={16} color="#6b7280" />;
     if (lower.match(/\.(mp3|wav|aac|flac|m4a)$/))
-      return <Music size={16} />;
+      return <Music size={16} color="#6b7280" />;
     if (lower.match(/\.(pdf|txt|csv|log|json|xml|html|css|js|ts|tsx)$/))
-      return <FileCode size={16} />;
-    return <FileText size={16} />;
+      return <FileCode size={16} color="#6b7280" />;
+    return <FileText size={16} color="#6b7280" />;
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -253,7 +243,6 @@ useEffect(() => {
     }));
   };
 
-  // Group files by first-level folder
   const groupedFiles = files.reduce((acc, item) => {
     const relativePath = item.key.replace(prefix || "", "");
     const parts = relativePath.split("/").filter(Boolean);
@@ -276,29 +265,21 @@ useEffect(() => {
     return acc;
   }, {} as Record<string, FileItem[]>);
 
-  // 🔧 FIX: Fetch Case and Evidence Metadata from share record
   useEffect(() => {
     const fetchMetadata = async () => {
       if (!caseNumber || !isAuthenticated || !prefix) {
-        console.log("Skipping metadata fetch - caseNumber:", caseNumber, "isAuthenticated:", isAuthenticated);
         return;
       }
 
       try {
-        // setMetadataLoading(true);
-        console.log("Fetching metadata for case:", caseNumber);
-
         const token = localStorage.getItem('external_access_token');
         const email = localStorage.getItem('external_user_email');
         
         if (!token || !email) {
-          console.log("No external token or email available");
           return;
         }
 
-        // 🔧 FIX: Get case metadata from the external share record
         try {
-          console.log("Fetching share data for email:", email, "and prefix:", prefix);
           const res = await fetch(`${API_BASE}/external-share-info?email=${encodeURIComponent(email)}&prefix=${encodeURIComponent(prefix)}`, {
             headers: { 
               Authorization: `Bearer ${token}`,
@@ -308,9 +289,7 @@ useEffect(() => {
           
           if (res.ok) {
             const shareData = await res.json();
-            console.log("Share data received:", shareData);
             
-            // Extract case metadata from share record
             if (shareData) {
               const caseData: Case = {
                 case_number: shareData.case_number || caseNumber,
@@ -325,16 +304,12 @@ useEffect(() => {
               };
               setCaseMetadata(caseData);
             }
-          } else {
-            console.log("Could not fetch share info:", res.status);
           }
         } catch (caseErr: any) {
           console.log("Error fetching share info:", caseErr.message);
         }
 
-        // 🔧 FIX: Fetch evidence metadata using external token
         try {
-          console.log("Fetching evidence for case:", caseNumber);
           const res = await fetch(`${API_BASE}/cases/${caseNumber}/evidence`, {
             headers: { 
               Authorization: `Bearer ${token}`,
@@ -344,21 +319,16 @@ useEffect(() => {
           
           if (res.ok) {
             const evidenceResponse = await res.json();
-            console.log("Evidence response:", evidenceResponse);
             
             const evidenceMap = new Map<string, EvidenceItem>();
             
             if (evidenceResponse.items && evidenceResponse.items.length > 0) {
               evidenceResponse.items.forEach((evidence: EvidenceItem) => {
-                console.log("Processing evidence:", evidence.evidence_number, "Key:", evidence.s3_key);
                 evidenceMap.set(evidence.s3_key, evidence);
               });
-              console.log("Evidence map created with", evidenceMap.size, "items");
             }
             
             setEvidenceMetadata(evidenceMap);
-          } else {
-            console.log("Could not fetch evidence metadata:", res.status);
           }
         } catch (evidErr: any) {
           console.log("Error fetching evidence metadata:", evidErr.message);
@@ -366,15 +336,12 @@ useEffect(() => {
         
       } catch (err) {
         console.error("Error fetching metadata:", err);
-      } finally {
-        // setMetadataLoading(false);
       }
     };
 
     fetchMetadata();
-  }, [caseNumber, isAuthenticated, API_BASE]);
+  }, [caseNumber, isAuthenticated, API_BASE, prefix]);
 
-  // Fetch files
   useEffect(() => {
     const fetchFiles = async () => {
       if (!isAuthenticated || !prefix) return;
@@ -385,14 +352,14 @@ useEffect(() => {
         const token = localStorage.getItem('external_access_token');
 
         const res = await fetch(
-          `${API_BASE}/list-s3-objects?prefix=${encodeURIComponent(prefix)}&responseMode=grouped`,
+          `${API_BASE}/external-list-objects?prefix=${encodeURIComponent(prefix)}&responseMode=grouped`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
 
         const data = await res.json();
-                const merged = [
+        const merged = [
           ...(data.folders || []),
           ...(data.files || []),
         ];
@@ -406,7 +373,6 @@ useEffect(() => {
 
         setFiles(normalized);
 
-        // Clear expired cache entries on page load
         const now = Date.now();
         Object.keys(localStorage).forEach(key => {
           if (key.startsWith('preview_')) {
@@ -415,17 +381,15 @@ useEffect(() => {
               if (cached.expiry && now > cached.expiry) {
                 localStorage.removeItem(key);
               }
-            } catch (e) {
+            } catch {
               localStorage.removeItem(key);
             }
           }
         });
 
-        // Auto select first file only
         const firstFile = normalized.find((f) => f.type === "file");
         setSelectedFile(firstFile || null);
 
-        // Auto-expand all folders
         const folders = Object.keys(
           normalized.reduce((acc, item) => {
             if (item.type === "folder") {
@@ -450,7 +414,6 @@ useEffect(() => {
     fetchFiles();
   }, [isAuthenticated, prefix, API_BASE]);
 
-  // Generate signed preview URL (using existing endpoint with external token)
   const generatePreview = async (file: FileItem) => {
     try {
       const token = localStorage.getItem('external_access_token');
@@ -474,14 +437,7 @@ useEffect(() => {
       }
 
       const data = await res.json();
-
-      // Handle timestamps safely
-      const generatedAt = data.generatedAt ? data.generatedAt * 1000 : Date.now();
-      const expiresIn = data.expiresIn || 120;
-      const expiry = generatedAt + (expiresIn * 1000);
-
-      console.log("Generated at:", new Date(generatedAt).toISOString());
-      console.log("Expires at:", new Date(expiry).toISOString());
+      const expiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
 
       const cacheKey = `preview_${file.key}`;
       localStorage.setItem(
@@ -497,7 +453,6 @@ useEffect(() => {
     }
   };
 
-  // 🔧 FIX: Check if preview URL is expired - only clear, don't regenerate
   const checkPreviewExpiration = () => {
     if (!selectedFile) return;
     
@@ -511,31 +466,27 @@ useEffect(() => {
     try {
       const { expiry } = JSON.parse(cached);
       if (Date.now() > expiry) {
-        // Just clear the preview URL and cache, don't regenerate
         setPreviewUrl(null);
         localStorage.removeItem(cacheKey);
         setIsPreviewExpired(true);
       }
     } catch {
-      // Invalid cache, just clear it
       localStorage.removeItem(cacheKey);
       setPreviewUrl(null);
       setIsPreviewExpired(true);
     }
   };
 
-  // Check preview expiration every second
   useEffect(() => {
     const interval = setInterval(checkPreviewExpiration, 1000);
     return () => clearInterval(interval);
   }, [selectedFile]);
 
-  // Load cached preview URL when file is selected
   useEffect(() => {
     if (!selectedFile) return;
 
-    // Reset preview expired state when selecting a new file
     setIsPreviewExpired(false);
+    setPreviewUrl(null);
 
     const cacheKey = `preview_${selectedFile.key}`;
     const cached = localStorage.getItem(cacheKey);
@@ -546,36 +497,47 @@ useEffect(() => {
         if (Date.now() < expiry) {
           setPreviewUrl(url);
         } else {
-          // Expired - just show expired message
           setPreviewUrl(null);
           localStorage.removeItem(cacheKey);
           setIsPreviewExpired(true);
         }
       } catch {
-        // Invalid cache - show expired message
         localStorage.removeItem(cacheKey);
         setPreviewUrl(null);
         setIsPreviewExpired(true);
       }
     } else {
-      // No cached preview - generate once
       generatePreview(selectedFile);
     }
-  }, [selectedFile]);
+  }, [selectedFile?.key]);
 
   const getEvidenceForFile = (fileKey: string): EvidenceItem | null => {
     return evidenceMetadata.get(fileKey) || null;
   };
 
-  // 🔧 FIX: Download Functions - Generate new signed URL for download
+  const downloadFromSignedUrl = async (signedUrl: string, fileName: string) => {
+    const response = await fetch(signedUrl);
+    const blob = await response.blob();
+
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    window.URL.revokeObjectURL(blobUrl);
+  };
+
   const handleDownloadCurrent = async () => {
     if (!selectedFile) return;
-    
+
     setDownloading(true);
+
     try {
-      const token = localStorage.getItem('external_access_token');
-      
-      // Generate a fresh signed URL for download
+      const token = localStorage.getItem("external_access_token");
+
       const res = await fetch(`${API_BASE}/objects/generate-link`, {
         method: "POST",
         headers: {
@@ -589,24 +551,89 @@ useEffect(() => {
       });
 
       if (!res.ok) {
-        throw new Error(`Failed to generate download link: ${res.status}`);
+        throw new Error(`Failed to generate download link`);
       }
 
       const data = await res.json();
-      
-      // Create download link
-      const link = document.createElement('a');
-      link.href = data.url;
-      link.download = selectedFile.name;
-      link.setAttribute('download', selectedFile.name);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast.success('Download started');
+
+      await downloadFromSignedUrl(data.url, selectedFile.name);
+
+      toast.success("Download started");
     } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Failed to download file');
+      console.error("Download error:", error);
+      toast.error("Failed to download file");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleDownloadSelected = async () => {
+    if (selectedFiles.size === 0) return;
+
+    setDownloading(true);
+
+    try {
+      const token = localStorage.getItem("external_access_token");
+
+      const res = await fetch(`${API_BASE}/objects/generate-link`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          objectKeys: Array.from(selectedFiles),
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to generate zip");
+      }
+
+      const data = await res.json();
+
+      await downloadFromSignedUrl(data.url, "selected_files.zip");
+
+      toast.success("Zip download started");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to download zip");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleDownloadFolder = async () => {
+    if (!prefix) return;
+
+    setDownloading(true);
+
+    try {
+      const token = localStorage.getItem("external_access_token");
+
+      const res = await fetch(`${API_BASE}/objects/generate-link`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          folderPrefix: prefix,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to generate folder zip");
+      }
+
+      const data = await res.json();
+
+      await downloadFromSignedUrl(data.url, `${folderName}.zip`);
+
+      toast.success("Folder download started");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to download folder");
     } finally {
       setDownloading(false);
     }
@@ -624,10 +651,6 @@ useEffect(() => {
     });
   };
 
-  // Check if preview link is expired
-  const [isPreviewExpired, setIsPreviewExpired] = useState(false);
-
-  // Render preview based on file type
   const renderPreview = () => {
     if (loading) {
       return (
@@ -660,10 +683,10 @@ useEffect(() => {
 
     const fileName = selectedFile.name.toLowerCase();
 
-    // Image preview
     if (fileName.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/)) {
       return (
         <img
+          key={selectedFile.key}
           src={previewUrl}
           alt={selectedFile.name}
           style={{
@@ -676,10 +699,10 @@ useEffect(() => {
       );
     }
 
-    // Video preview
     if (fileName.match(/\.(mp4|webm|ogg|avi|mov)$/)) {
       return (
         <video
+          key={selectedFile.key}
           controls
           style={{
             maxWidth: "100%",
@@ -693,12 +716,11 @@ useEffect(() => {
       );
     }
 
-    // Audio preview
     if (fileName.match(/\.(mp3|wav|aac|flac|m4a)$/)) {
       return (
         <Flex direction="column" alignItems="center" gap="2rem" padding="2rem">
           <Music size={64} color="#6b7280" />
-          <audio controls style={{ width: "100%", maxWidth: "400px" }}>
+          <audio key={selectedFile.key} controls style={{ width: "100%", maxWidth: "400px" }}>
             <source src={previewUrl} />
             Your browser does not support audio playback.
           </audio>
@@ -706,10 +728,10 @@ useEffect(() => {
       );
     }
 
-    // PDF preview
     if (fileName.endsWith(".pdf")) {
       return (
         <iframe
+          key={selectedFile.key}
           src={previewUrl}
           style={{
             width: "100%",
@@ -722,7 +744,6 @@ useEffect(() => {
       );
     }
 
-    // Default - no preview available
     return (
       <Flex direction="column" alignItems="center" gap="1rem">
         <FileText size={64} color="#d1d5db" />
@@ -797,7 +818,67 @@ if (isAccessDenied) {
   );
 }
 
-  // Full-screen expiration message
+  if (isAccessChecking) {
+    return (
+      <Flex
+        direction="column"
+        justifyContent="center"
+        alignItems="center"
+        style={{ height: "100vh" }}
+      >
+        <Loader size="large" />
+        <Text>Validating access...</Text>
+      </Flex>
+    );
+  }
+
+  if (isAccessDenied) {
+    return (
+      <Flex
+        direction="column"
+        justifyContent="center"
+        alignItems="center"
+        style={{
+          height: "100vh",
+          backgroundColor: "#f9fafb",
+          padding: "2rem",
+        }}
+      >
+        <Card
+          variation="outlined"
+          style={{
+            maxWidth: "500px",
+            padding: "3rem",
+            textAlign: "center",
+          }}
+        >
+          <Flex direction="column" gap="1.5rem" alignItems="center">
+            <img
+              src={logo}
+              alt="Logo"
+              style={{
+                height: "64px",
+                objectFit: "contain",
+              }}
+            />
+            <Heading level={3} style={{ margin: 0 }}>
+              Access Denied
+            </Heading>
+            <Text color="#6b7280">
+              You do not have permission to access this shared content.
+            </Text>
+            <Button
+              variation="primary"
+              onClick={() => navigate("/external-login")}
+            >
+              Return to Login
+            </Button>
+          </Flex>
+        </Card>
+      </Flex>
+    );
+  }
+
   if (isExpired) {
     return (
       <Flex
@@ -846,12 +927,11 @@ if (isAccessDenied) {
 
   return (
     <Flex direction="column" style={{ height: "100vh", overflow: "hidden", position: "relative" }}>
-      {/* HEADER */}
       <Flex
         direction="row"
         justifyContent="space-between"
         alignItems="center"
-        padding="1.25rem 2rem"
+        padding="1rem 1.5rem"
         style={{
           borderBottom: "1px solid #e5e7eb",
           backgroundColor: "#ffffff",
@@ -862,54 +942,56 @@ if (isAccessDenied) {
           <img
             src={logo}
             alt="Logo"
-            style={{ height: "36px", objectFit: "contain" }}
+            style={{ height: "32px", objectFit: "contain" }}
           />
           <Divider orientation="vertical" style={{ height: "24px" }} />
-          <Heading level={5} style={{ margin: 0, color: "#111827" }}>
+          <Heading level={5} style={{ margin: 0, color: "#111827", fontSize: "1rem" }}>
             {folderName}
           </Heading>
         </Flex>
 
-        <Flex gap="1rem" alignItems="center">
+        <Flex gap="0.75rem" alignItems="center">
+          {selectedFiles.size > 0 && (
+            <Button
+              size="small"
+              variation="primary"
+              onClick={handleDownloadSelected}
+              isLoading={downloading}
+            >
+              Download Selected ({selectedFiles.size})
+            </Button>
+          )}
+
+          {files.length > 0 && (
+            <Button
+              size="small"
+              variation="primary"
+              onClick={handleDownloadFolder}
+              isLoading={downloading}
+            >
+              Download Case Folder
+            </Button>
+          )}
+
           {caseNumber && (
             <Badge variation="info" size="small">
-              <Flex gap="0.5rem" alignItems="center">
-                <Hash size={14} />
-                {caseNumber}
-              </Flex>
+              {caseNumber}
             </Badge>
           )}
         </Flex>
       </Flex>
 
-      {/* MAIN CONTENT */}
       <Flex flex="1" style={{ overflow: "hidden" }}>
-        {/* LEFT PANEL - File List */}
         <Flex
           direction="column"
           style={{
-            width: "320px",
+            width: "340px",
             borderRight: "1px solid #e5e7eb",
             overflow: "auto",
-            backgroundColor: "#f9fafb",
+            backgroundColor: "#fafafa",
             flexShrink: 0,
           }}
         >
-          <Flex
-            direction="column"
-            padding="1.5rem"
-            gap="0.5rem"
-            style={{
-              borderBottom: "1px solid #e5e7eb",
-              backgroundColor: "#ffffff",
-            }}
-          >
-            <Heading level={6} style={{ margin: 0, fontSize: "0.875rem", color: "#6b7280", fontWeight: 600 }}>
-              FILES ({files.length})
-            </Heading>
-          </Flex>
-
-          {/* Case Metadata Panel */}
           {caseMetadata && (
             <Flex
               direction="column"
@@ -917,37 +999,37 @@ if (isAccessDenied) {
               gap="0.75rem"
               style={{
                 borderBottom: "1px solid #e5e7eb",
-                backgroundColor: "#fefce8",
+                backgroundColor: "#fffbeb",
               }}
             >
               <Flex gap="0.5rem" alignItems="center">
-                <Briefcase size={16} color="#ca8a04" />
-                <Text fontSize="0.75rem" color="#854d0e" fontWeight={600} style={{ letterSpacing: "0.5px" }}>
+                <Briefcase size={16} color="#d97706" />
+                <Text fontSize="0.7rem" color="#92400e" fontWeight={700} style={{ letterSpacing: "0.8px" }}>
                   CASE INFORMATION
                 </Text>
               </Flex>
               
-              <Flex direction="column" gap="0.5rem">
+              <Flex direction="column" gap="0.6rem">
                 {caseMetadata.case_title && (
-                  <Flex direction="column" gap="0.25rem">
-                    <Text fontSize="0.7rem" color="#a16207" fontWeight={600}>
+                  <Flex direction="column" gap="0.2rem">
+                    <Text fontSize="0.65rem" color="#b45309" fontWeight={600} style={{ textTransform: "uppercase" }}>
                       Title
                     </Text>
-                    <Text fontSize="0.85rem" color="#854d0e" style={{ fontWeight: 500 }}>
+                    <Text fontSize="0.85rem" color="#78350f" style={{ fontWeight: 500, lineHeight: "1.3" }}>
                       {caseMetadata.case_title}
                     </Text>
                   </Flex>
                 )}
                 
                 {caseMetadata.jurisdiction && (
-                  <Flex direction="column" gap="0.25rem">
+                  <Flex direction="column" gap="0.2rem">
                     <Flex gap="0.25rem" alignItems="center">
-                      <MapPin size={12} color="#a16207" />
-                      <Text fontSize="0.7rem" color="#a16207" fontWeight={600}>
+                      <MapPin size={11} color="#b45309" />
+                      <Text fontSize="0.65rem" color="#b45309" fontWeight={600} style={{ textTransform: "uppercase" }}>
                         Jurisdiction
                       </Text>
                     </Flex>
-                    <Text fontSize="0.85rem" color="#854d0e" style={{ fontWeight: 500 }}>
+                    <Text fontSize="0.85rem" color="#78350f" style={{ fontWeight: 500 }}>
                       {Array.isArray(caseMetadata.jurisdiction) 
                         ? caseMetadata.jurisdiction.join(", ") 
                         : caseMetadata.jurisdiction}
@@ -956,14 +1038,14 @@ if (isAccessDenied) {
                 )}
                 
                 {caseMetadata.case_agents && (
-                  <Flex direction="column" gap="0.25rem">
+                  <Flex direction="column" gap="0.2rem">
                     <Flex gap="0.25rem" alignItems="center">
-                      <Users size={12} color="#a16207" />
-                      <Text fontSize="0.7rem" color="#a16207" fontWeight={600}>
+                      <Users size={11} color="#b45309" />
+                      <Text fontSize="0.65rem" color="#b45309" fontWeight={600} style={{ textTransform: "uppercase" }}>
                         Agents
                       </Text>
                     </Flex>
-                    <Text fontSize="0.85rem" color="#854d0e" style={{ fontWeight: 500 }}>
+                    <Text fontSize="0.85rem" color="#78350f" style={{ fontWeight: 500 }}>
                       {caseMetadata.case_agents}
                     </Text>
                   </Flex>
@@ -972,7 +1054,7 @@ if (isAccessDenied) {
             </Flex>
           )}
 
-          <Flex direction="column" gap="0.25rem" padding="1rem">
+          <Flex direction="column" gap="0.25rem" padding="0.75rem">
             {Object.entries(groupedFiles).map(([folderName, folderFiles]) => {
               const isRoot = folderName === "_root";
               const isExpanded = expandedFolders[folderName];
@@ -982,7 +1064,7 @@ if (isAccessDenied) {
                   const isSelected = selectedFiles.has(file.key);
                   const hasEvidence = evidenceMetadata.has(file.key);
                   return (
-                    <Flex key={file.key} alignItems="center" gap="0.5rem">
+                    <Flex key={file.key} alignItems="center" gap="0.5rem" style={{ marginBottom: "0.125rem" }}>
                       <div
                         onClick={(e) => {
                           e.stopPropagation();
@@ -991,9 +1073,9 @@ if (isAccessDenied) {
                         style={{ cursor: "pointer", padding: "0.25rem" }}
                       >
                         {isSelected ? (
-                          <CheckSquare size={18} color="#2563eb" />
+                          <CheckSquare size={16} color="#2563eb" />
                         ) : (
-                          <Square size={18} color="#9ca3af" />
+                          <Square size={16} color="#9ca3af" />
                         )}
                       </div>
                       <Button
@@ -1001,9 +1083,9 @@ if (isAccessDenied) {
                         onClick={() => setSelectedFile(file)}
                         style={{
                           justifyContent: "flex-start",
-                          padding: "0.625rem 0.75rem",
-                          fontSize: "0.875rem",
-                          transition: "all 0.2s ease",
+                          padding: "0.5rem 0.75rem",
+                          fontSize: "0.85rem",
+                          transition: "all 0.15s ease",
                           flex: 1,
                         }}
                       >
@@ -1020,7 +1102,7 @@ if (isAccessDenied) {
                             {file.name}
                           </Text>
                           {hasEvidence && (
-                            <FileCheck size={14} color="#10b981" />
+                            <FileCheck size={13} color="#10b981" />
                           )}
                         </Flex>
                       </Button>
@@ -1030,14 +1112,14 @@ if (isAccessDenied) {
               }
 
               return (
-                <div key={folderName}>
+                <div key={folderName} style={{ marginBottom: "0.25rem" }}>
                   <Button
                     variation="link"
                     onClick={() => toggleFolder(folderName)}
                     style={{
                       justifyContent: "flex-start",
-                      padding: "0.625rem 0.75rem",
-                      fontSize: "0.875rem",
+                      padding: "0.5rem 0.75rem",
+                      fontSize: "0.85rem",
                       fontWeight: 600,
                       color: "#374151",
                       width: "100%",
@@ -1045,22 +1127,22 @@ if (isAccessDenied) {
                   >
                     <Flex gap="0.5rem" alignItems="center">
                       {isExpanded ? (
-                        <ChevronDown size={16} />
+                        <ChevronDown size={15} />
                       ) : (
-                        <ChevronRight size={16} />
+                        <ChevronRight size={15} />
                       )}
-                      <Folder size={16} />
+                      <Folder size={15} color="#f59e0b" />
                       <Text>{folderName}</Text>
                     </Flex>
                   </Button>
 
                   {isExpanded && (
-                    <div style={{ paddingLeft: "1.5rem" }}>
+                    <div style={{ paddingLeft: "1.25rem" }}>
                       {folderFiles.map((file) => {
                         const isSelected = selectedFiles.has(file.key);
                         const hasEvidence = evidenceMetadata.has(file.key);
                         return (
-                          <Flex key={file.key} alignItems="center" gap="0.5rem">
+                          <Flex key={file.key} alignItems="center" gap="0.5rem" style={{ marginBottom: "0.125rem" }}>
                             <div
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1069,9 +1151,9 @@ if (isAccessDenied) {
                               style={{ cursor: "pointer", padding: "0.25rem" }}
                             >
                               {isSelected ? (
-                                <CheckSquare size={18} color="#2563eb" />
+                                <CheckSquare size={16} color="#2563eb" />
                               ) : (
-                                <Square size={18} color="#9ca3af" />
+                                <Square size={16} color="#9ca3af" />
                               )}
                             </div>
                             <Button
@@ -1083,9 +1165,9 @@ if (isAccessDenied) {
                               }}
                               style={{
                                 justifyContent: "flex-start",
-                                padding: "0.625rem 0.75rem",
-                                fontSize: "0.875rem",
-                                transition: "all 0.2s ease",
+                                padding: "0.5rem 0.75rem",
+                                fontSize: "0.85rem",
+                                transition: "all 0.15s ease",
                                 flex: 1,
                               }}
                             >
@@ -1102,7 +1184,7 @@ if (isAccessDenied) {
                                   {file.name}
                                 </Text>
                                 {hasEvidence && (
-                                  <FileCheck size={14} color="#10b981" />
+                                  <FileCheck size={13} color="#10b981" />
                                 )}
                               </Flex>
                             </Button>
@@ -1126,22 +1208,22 @@ if (isAccessDenied) {
           )}
         </Flex>
 
-        {/* RIGHT PANEL - Preview & Metadata */}
         <Flex direction="column" flex="1" style={{ overflow: "hidden" }}>
-          <Flex flex="1" style={{ overflow: "auto", padding: "2rem" }}>
+          <Flex flex="1" style={{ overflow: "auto", padding: "1.5rem" }}>
             <Flex direction="column" flex="1" gap="1.5rem" style={{ maxWidth: "1200px", margin: "0 auto" }}>
               {selectedFile && (
                 <Flex justifyContent="space-between" alignItems="center">
-                  <Heading level={4} style={{ margin: 0 }}>
+                  <Heading level={4} style={{ margin: 0, fontSize: "1.25rem", color: "#111827" }}>
                     {selectedFile.name}
                   </Heading>
                   <Button
                     variation="primary"
                     onClick={handleDownloadCurrent}
                     isLoading={downloading}
+                    size="small"
                   >
                     <Flex gap="0.5rem" alignItems="center">
-                      <Download size={16} />
+                      <Download size={14} />
                       Download
                     </Flex>
                   </Button>
@@ -1149,7 +1231,6 @@ if (isAccessDenied) {
               )}
 
               <Flex gap="1.5rem" direction={{ base: "column", large: "row" }}>
-                {/* Preview Area */}
                 <Card
                   variation="outlined"
                   style={{
@@ -1165,61 +1246,59 @@ if (isAccessDenied) {
                   {renderPreview()}
                 </Card>
 
-                {/* Metadata Panel */}
                 {selectedFile && (
                   <Card
                     variation="outlined"
                     style={{
-                      width: "320px",
-                      padding: "1.5rem",
+                      width: "300px",
+                      padding: "1.25rem",
                       backgroundColor: "#ffffff",
                       alignSelf: "flex-start",
                     }}
                   >
-                    <Flex direction="column" gap="1.5rem">
-                      <Heading level={5} style={{ margin: 0, fontSize: "1rem", fontWeight: 600 }}>
+                    <Flex direction="column" gap="1.25rem">
+                      <Heading level={6} style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, color: "#111827" }}>
                         File Information
                       </Heading>
 
                       <Divider style={{ margin: 0 }} />
 
-                      {/* Evidence Metadata Section */}
                       {currentEvidence && (
                         <>
-                          <Flex direction="column" gap="1rem" padding="1rem" style={{ backgroundColor: "#f0fdf4", borderRadius: "8px", border: "1px solid #86efac" }}>
+                          <Flex direction="column" gap="0.75rem" padding="0.875rem" style={{ backgroundColor: "#f0fdf4", borderRadius: "6px", border: "1px solid #86efac" }}>
                             <Flex gap="0.5rem" alignItems="center">
-                              <FileCheck size={18} color="#10b981" />
-                              <Text fontSize="0.8rem" color="#065f46" fontWeight={600} style={{ letterSpacing: "0.5px" }}>
+                              <FileCheck size={16} color="#10b981" />
+                              <Text fontSize="0.7rem" color="#065f46" fontWeight={700} style={{ letterSpacing: "0.8px" }}>
                                 EVIDENCE INFORMATION
                               </Text>
                             </Flex>
                             
-                            <Flex direction="column" gap="0.75rem">
-                              <Flex direction="column" gap="0.25rem">
-                                <Text fontSize="0.75rem" color="#047857" fontWeight={600}>
+                            <Flex direction="column" gap="0.6rem">
+                              <Flex direction="column" gap="0.2rem">
+                                <Text fontSize="0.65rem" color="#047857" fontWeight={600} style={{ textTransform: "uppercase" }}>
                                   Evidence Number
                                 </Text>
-                                <Text fontSize="0.9rem" color="#065f46" style={{ fontWeight: 500 }}>
+                                <Text fontSize="0.85rem" color="#065f46" style={{ fontWeight: 500 }}>
                                   {currentEvidence.evidence_number}
                                 </Text>
                               </Flex>
                               
                               {currentEvidence.description && (
-                                <Flex direction="column" gap="0.25rem">
-                                  <Text fontSize="0.75rem" color="#047857" fontWeight={600}>
+                                <Flex direction="column" gap="0.2rem">
+                                  <Text fontSize="0.65rem" color="#047857" fontWeight={600} style={{ textTransform: "uppercase" }}>
                                     Description
                                   </Text>
-                                  <Text fontSize="0.9rem" color="#065f46" style={{ fontWeight: 400 }}>
+                                  <Text fontSize="0.85rem" color="#065f46" style={{ fontWeight: 400, lineHeight: "1.4" }}>
                                     {currentEvidence.description}
                                   </Text>
                                 </Flex>
                               )}
                               
-                              <Flex direction="column" gap="0.25rem">
-                                <Text fontSize="0.75rem" color="#047857" fontWeight={600}>
+                              <Flex direction="column" gap="0.2rem">
+                                <Text fontSize="0.65rem" color="#047857" fontWeight={600} style={{ textTransform: "uppercase" }}>
                                   Uploaded
                                 </Text>
-                                <Text fontSize="0.9rem" color="#065f46" style={{ fontWeight: 500 }}>
+                                <Text fontSize="0.85rem" color="#065f46" style={{ fontWeight: 500 }}>
                                   {formatDate(currentEvidence.uploaded_at)}
                                 </Text>
                               </Flex>
@@ -1229,29 +1308,27 @@ if (isAccessDenied) {
                         </>
                       )}
 
-                      <Flex direction="column" gap="1.5rem">
-                        {/* File Size */}
-                        <Flex direction="column" gap="0.5rem">
-                          <Flex gap="0.5rem" alignItems="center" style={{ marginBottom: "0.25rem" }}>
-                            <HardDrive size={18} color="#6b7280" />
-                            <Text fontSize="0.8rem" color="#6b7280" fontWeight={600} style={{ letterSpacing: "0.5px" }}>
-                              SIZE
+                      <Flex direction="column" gap="1rem">
+                        <Flex direction="column" gap="0.4rem">
+                          <Flex gap="0.5rem" alignItems="center">
+                            <HardDrive size={16} color="#6b7280" />
+                            <Text fontSize="0.7rem" color="#6b7280" fontWeight={600} style={{ letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                              Size
                             </Text>
                           </Flex>
-                          <Text fontSize="0.95rem" color="#111827" style={{ fontWeight: 500 }}>
+                          <Text fontSize="0.9rem" color="#111827" style={{ fontWeight: 500 }}>
                             {formatFileSize(selectedFile.size)}
                           </Text>
                         </Flex>
 
-                        {/* File Type */}
-                        <Flex direction="column" gap="0.5rem">
-                          <Flex gap="0.5rem" alignItems="center" style={{ marginBottom: "0.25rem" }}>
+                        <Flex direction="column" gap="0.4rem">
+                          <Flex gap="0.5rem" alignItems="center">
                             {getFileIcon(selectedFile.name)}
-                            <Text fontSize="0.8rem" color="#6b7280" fontWeight={600} style={{ letterSpacing: "0.5px" }}>
-                              TYPE
+                            <Text fontSize="0.7rem" color="#6b7280" fontWeight={600} style={{ letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                              Type
                             </Text>
                           </Flex>
-                          <Text fontSize="0.95rem" color="#111827" style={{ fontWeight: 500 }}>
+                          <Text fontSize="0.9rem" color="#111827" style={{ fontWeight: 500 }}>
                             {selectedFile.name.split(".").pop()?.toUpperCase() || "Unknown"}
                           </Text>
                         </Flex>
@@ -1265,7 +1342,6 @@ if (isAccessDenied) {
         </Flex>
       </Flex>
 
-      {/* Blur Overlay with "Link has Expired" message */}
       {isPreviewExpired && (
         <div
           style={{

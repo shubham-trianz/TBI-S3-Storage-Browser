@@ -49,8 +49,8 @@ export function UploadDialog({
     isNetworkError
   } = useFileUploader();
 
-  const validateEvidenceNumber = (value: string) =>
-    /^\d{4}-\d{7}-E\d+$/.test(value);
+  // const validateEvidenceNumber = (value: string) =>
+  //   /^\d{4}-\d{7}-E\d+$/.test(value);
 
   const handleUpload = async () => {
     if (!file) return;
@@ -58,10 +58,10 @@ export function UploadDialog({
     const evidenceNumber = evidenceNumberRef.current?.value || "";
     const description = evidenceDescriptionRef.current?.value || "";
 
-    if (!validateEvidenceNumber(evidenceNumber)) {
-      setError("Evidence Number must be YYYY-XXXXXXX-EXXXXX");
-      return;
-    }
+    // if (!validateEvidenceNumber(evidenceNumber)) {
+    //   setError("Evidence Number must be YYYY-XXXXXXX-EXXXXX");
+    //   return;
+    // }
 
     setError(null);
 
@@ -79,7 +79,8 @@ export function UploadDialog({
       });
 
       if (result?.location) {
-        queryClient.invalidateQueries({ queryKey: ["cases"] });
+        queryClient.invalidateQueries({ queryKey: ["files"] });
+        queryClient.invalidateQueries({ queryKey: ["evidence"] });
         onUploaded?.();
         onClose();
       }
@@ -100,7 +101,13 @@ export function UploadDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={(reason) => {
+        if(reason == 'backdropClick') return
+        onClose()
+      }} 
+      maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 600 }}>
         Upload Evidence
       </DialogTitle>
@@ -108,7 +115,7 @@ export function UploadDialog({
       <DialogContent>
         <Stack spacing={3} mt={1}>
           <TextField
-            required
+            // required
             label="Kaseware Evidence Number"
             placeholder="2025-1234567-E00001"
             inputRef={evidenceNumberRef}

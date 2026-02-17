@@ -8,14 +8,6 @@ export interface Case {
     shared_to: SharedTo[],
     email: string,
     size: number
-    // shared_to?: {
-    //   user_id: string;
-    //   email: string;
-    //   permissions: {
-    //     read: boolean;
-    //     write: boolean;
-    //   };
-    // }[];
 }
 
 export interface DeleteEvidencePayload {
