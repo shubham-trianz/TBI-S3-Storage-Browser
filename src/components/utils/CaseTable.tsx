@@ -553,7 +553,7 @@ const columns = useMemo(() => {
             // Select-all mode
             const excludedIds = model.ids;
             console.log('daaaaaaaaaaaa: ', data)
-            selectedIds = data.map((row) => row.source_key).filter(id => !excludedIds.has(id))
+            selectedIds = rows.map((row) => row.id).filter(id => !excludedIds.has(id))
           }
           console.log('selectedIdsssssssss: ', selectedIds)
           handleSelected?.(selectedIds);
