@@ -8,7 +8,7 @@ import { FileViewDownloadAPI } from "../../api/viewdownload";
 
 import DownloadIcon from "@mui/icons-material/Download";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import {
   Case,
@@ -50,6 +50,7 @@ interface CommonGridProps {
   loading: boolean;
   handleRowClick: (params: unknown) => void;
   handleSelected?: (params: unknown) => void;
+  onFileDrop?: (file: File) => void;
 }
 
 interface CasesModeProps extends CommonGridProps {
@@ -88,8 +89,33 @@ type GridProps =
 // }
 
 export default function CasesGrid(props: GridProps) {
-   const { viewMode, data, loading, handleRowClick, handleSelected } = props;
+   const { viewMode, data, loading, handleRowClick, handleSelected, onFileDrop } = props;
     // const [loading, setLoading] = useState(true);
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (viewMode !== "files") return;
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    if (viewMode !== "files") return;
+
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      onFileDrop?.(files[0]);
+    }
+  };
+
 
   const caseColumns: GridColDef[] = [
     {
@@ -494,12 +520,16 @@ const columns = useMemo(() => {
 
   return (
     <Box 
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
         sx={{ 
             height: 520, 
             width: "100%", 
-            backgroundColor: "#fff",
+            bbackgroundColor: isDragging ? "#f0f8ff" : "#fff",
             borderRadius: 2,
-
+            border: isDragging ? "2px dashed #1976d2" : "2px solid transparent",
+            transition: "0.2s ease",
             // boxShadow: "0 4px 20px rgba(0,0,0,0.09)",
             // p: 2,
         }}>

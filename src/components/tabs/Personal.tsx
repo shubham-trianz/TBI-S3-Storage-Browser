@@ -35,6 +35,8 @@ export const Personal = () => {
   const [casesLoading, setCasesLoading] = useState(true);
   const [filesLoading, setFilesLoading] = useState(true);
 
+  const [droppedFile, setDroppedFile] = useState<File | null>(null);
+
   // const { mutateAsync: deleteEvidence } = useDeleteEvidence();
   const { mutateAsync: shareExternal } = useShareExternal();
   const { user_name, email } = useUser()
@@ -422,8 +424,10 @@ export const Personal = () => {
           {identityId && !isRoot && (
           <UploadButton
             prefix={`private/${identityId}/${currentPath}`}
+            droppedFile={droppedFile}
+            onClearDroppedFile={() => setDroppedFile(null)} 
             onUploaded={async () => {
-              await loadFiles();
+              setDroppedFile(null);
               if (currentCaseNumber) {
                 setTimeout(() => {
                   refetchEvidence();
@@ -453,6 +457,9 @@ export const Personal = () => {
           handleRowClick={handleRowClick}
           viewMode={viewMode}
           handleSelected={(selected: any) => setSelectedRows(selected)}
+          onFileDrop={(file) => {
+            setDroppedFile(file);
+          }}
         />
     </>
   );
