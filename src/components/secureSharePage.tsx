@@ -381,7 +381,7 @@ export const SecureSharePage = () => {
               if (cached.expiry && now > cached.expiry) {
                 localStorage.removeItem(key);
               }
-            } catch (e) {
+            } catch {
               localStorage.removeItem(key);
             }
           }
