@@ -8,14 +8,6 @@ export interface Case {
     shared_to: SharedTo[],
     email: string,
     size: number
-    // shared_to?: {
-    //   user_id: string;
-    //   email: string;
-    //   permissions: {
-    //     read: boolean;
-    //     write: boolean;
-    //   };
-    // }[];
 }
 
 export interface DeleteEvidencePayload {
@@ -94,7 +86,7 @@ export interface ReceiveCasePayload {
 export interface EvidenceItem {
   evidence_number: string;
   description: string;
-  s3_key: string;
+  source_key: string;
   uploaded_at: string;
 }
 

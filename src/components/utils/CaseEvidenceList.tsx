@@ -60,7 +60,7 @@ export function CaseEvidenceList({ caseNumber, onSelectEvidence }: Props) {
               checked={selected.size === sortedItems.length && sortedItems.length > 0}
               onChange={(e) => {
                 if (e.target.checked) {
-                  const allKeys = new Set(sortedItems.map(ev => ev.s3_key));
+                  const allKeys = new Set(sortedItems.map(ev => ev.source_key));
                   setSelected(allKeys);
                   onSelectEvidence?.(Array.from(allKeys));
                 } else {
@@ -106,8 +106,8 @@ export function CaseEvidenceList({ caseNumber, onSelectEvidence }: Props) {
             <td>
               <input
                 type="checkbox"
-                checked={selected.has(ev.s3_key)}
-                onChange={() => toggleSelect(ev.s3_key)}
+                checked={selected.has(ev.source_key)}
+                onChange={() => toggleSelect(ev.source_key)}
               />
             </td>
             <td>{ev.evidence_number}</td>

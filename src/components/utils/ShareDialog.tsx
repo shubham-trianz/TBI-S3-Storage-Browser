@@ -438,8 +438,8 @@ type SharedTo = {
 type ShareDialogProps = {
   open: boolean;
   users?: User[];
-  selectedFiles: Set<string>;
-  sharedTo?: SharedTo[];
+  selectedFiles: string[];
+  sharedTo?: SharedTo[]; 
   onClose: () => void;
   onShare: (payload: SharePayload) => void;
 };
