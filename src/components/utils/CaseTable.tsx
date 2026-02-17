@@ -297,6 +297,8 @@ const receivedCaseColumns: GridColDef[] = [
     field: "size",
     headerName: "Size",
     flex: 1,
+    valueFormatter: (params) =>
+      formatBytes(params),
     // valueGetter: (params: any) => {
     //   const size = params.row?.size || 0;
     //   if (size === 0) return "0 KB";

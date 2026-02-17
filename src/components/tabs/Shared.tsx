@@ -93,9 +93,9 @@ export const Shared = () => {
   const evidenceByKey = useMemo(() => {
   const map = new Map<string, any>();
   evidenceData?.items?.forEach(ev => {
-    map.set(ev.s3_key, ev);
+    map.set(ev.source_key, ev);
     
-    const filename = ev.s3_key?.split('/').pop();
+    const filename = ev.source_key?.split('/').pop();
     if (filename) {
       map.set(filename, ev);
     }
