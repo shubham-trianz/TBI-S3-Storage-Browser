@@ -153,16 +153,17 @@ export const SecureSharePage = () => {
       try {
         setIsAccessChecking(true);
 
-        const email = localStorage.getItem("external_user_email");
+        const token = localStorage.getItem("external_access_token");
 
-        if (!email) {
-          throw new Error("No external email found");
+        if (!token) {
+          throw new Error("No access token found");
         }
 
         const res = await fetch(
-          `${API_BASE}/external-share-info?email=${encodeURIComponent(email)}&prefix=${encodeURIComponent(prefix)}`,
+          `${API_BASE}/external-share-info?prefix=${encodeURIComponent(prefix)}`,
           {
             headers: {
+              Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
           }
@@ -273,14 +274,13 @@ export const SecureSharePage = () => {
 
       try {
         const token = localStorage.getItem('external_access_token');
-        const email = localStorage.getItem('external_user_email');
         
-        if (!token || !email) {
+        if (!token) {
           return;
         }
 
         try {
-          const res = await fetch(`${API_BASE}/external-share-info?email=${encodeURIComponent(email)}&prefix=${encodeURIComponent(prefix)}`, {
+          const res = await fetch(`${API_BASE}/external-share-info?prefix=${encodeURIComponent(prefix)}`, {
             headers: { 
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json'
