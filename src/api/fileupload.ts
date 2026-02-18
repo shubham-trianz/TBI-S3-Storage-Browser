@@ -22,35 +22,35 @@ export interface CompleteUploadPayload {
 }
 
 export const FileUploadAPI = {
-  // 1️⃣ Initiate Multipart Upload
+  // Initiate Multipart Upload
   initiate(fileName: string, contentType: string, metadata?: Record<string, string>): Promise<InitiateUploadResponse> {
     return apiClient
       .post("/uploads/initiate", { fileName, contentType, metadata })
       .then(res => res.data);
   },
 
-  // 2️⃣ Generate Presigned URLs for parts
+  // Generate Presigned URLs for parts
   presign(uploadId: string, key: string, partNumbers: number[]): Promise<PresignUploadResponse> {
     return apiClient
       .post("/uploads/presign", { uploadId, key, partNumbers })
       .then(res => res.data);
   },
 
-  // 3️⃣ Complete Upload
+  // Complete Upload
   complete(payload: CompleteUploadPayload): Promise<{ location: string }> {
     return apiClient
       .post("/uploads/complete", payload)
       .then(res => res.data);
   },
 
-  // 4️⃣ List uploaded parts (for resume)
+  // List uploaded parts (for resume)
   listParts(uploadId: string, key: string): Promise<{ uploadedParts: { PartNumber: number; ETag: string }[] }> {
     return apiClient
       .post("/uploads/list-parts", { uploadId, key })
       .then(res => res.data);
   },
 
-  // 5️⃣ Abort upload
+  // Abort upload
   abort(uploadId: string, key: string): Promise<{ aborted: boolean }> {
     return apiClient
       .post("/uploads/abort", { uploadId, key })

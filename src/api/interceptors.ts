@@ -15,11 +15,6 @@ apiClient.interceptors.response.use(
   response => response,
   error => {
     const status = error.response?.status;
-
-    if (status === 401) {
-      // optional: redirect to login / signout
-    }
-
     return Promise.reject({
       status,
       message:

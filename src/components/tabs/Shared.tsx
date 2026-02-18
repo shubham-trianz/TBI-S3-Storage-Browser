@@ -5,21 +5,14 @@ import {
   Heading,
   Button,
 } from "@aws-amplify/ui-react";
-// import { UploadButton } from "../utils/UploadButton";
-// import { DeleteObjects } from "../utils/DeleteObjects";
-// import { CreateCase } from '../utils/CreateCase';
-// import { CreateFolder } from '../utils/CreateFolder';
 import Breadcrumbs from "../utils/Breadcrumbs"
 import { useCases, useShareCaseTo } from '../../hooks/cases';
 import { useCaseEvidence } from '../../hooks/useCaseEvidence';
-
 import CasesGrid from '../utils/CaseTable';
-
 import ShareDialog from '../utils/ShareDialog';
 import { useUser } from '../../context/UserContext';
 import { useCognitoUser } from '../../hooks/users';
 import toast from 'react-hot-toast';
-
 import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 
@@ -29,12 +22,9 @@ export const Shared = () => {
   const [files, setFiles] = useState<any[]>([]);
   const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
-  // const [selected, setSelected] = useState<Set<string>>(new Set());
-
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [casesLoading, setCasesLoading] = useState(true);
   const [filesLoading, setFilesLoading] = useState(true);
-
   const { user_name, email } = useUser()
 
   const createS3Client = async () => {
@@ -57,13 +47,9 @@ export const Shared = () => {
  const {
   data: evidenceData,
 } = useCaseEvidence(currentCaseNumber ?? '');
-  // const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
-  // const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const isRoot = pathStack.length === 0;
   const viewMode = isRoot ? "cases" : "files";
 
-  // const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
-  // const selectedFolders = [...selected].filter(p => p.endsWith("/"));
   let { data: cases, isLoading } = useCases();
   const { mutate: shareCaseTo } = useShareCaseTo();
 
@@ -103,15 +89,6 @@ export const Shared = () => {
 }, [evidenceData]);
 
 
-  // const rootFolderPrefix = identityId
-  // ? `private/${identityId}/`
-  // : null;
-  // const canGenerateLink =
-  //   selectedFiles.length > 0 ||
-  //   selectedFolders.length === 1 ||
-  //   !!currentFolderPrefix ||
-  //   !!rootFolderPrefix;  
-
   useEffect(() => {
     async function init() {
       const session = await fetchAuthSession();
@@ -148,7 +125,6 @@ export const Shared = () => {
         if(item.Key == basePath) continue
         items.push(item)
       }
-      console.log('itemsssssssss: ', items)
       const mergedItems = items.map((item) => {
         if (item.type === "folder") {
           return item; 
@@ -194,7 +170,6 @@ export const Shared = () => {
       name = row.name
       setPathStack(prev => [...prev, `${name}/`]);
     }
-    // setSelected(new Set());
   }
 
   const [open, setOpen] = useState(false)
@@ -295,84 +270,6 @@ export const Shared = () => {
             />
           )}
 
-          {/* <Button
-            size="small"
-            onClick={loadFiles}
-            isLoading={loading}
-          >
-            Refresh
-          </Button> */}
-
-          {/* {isRoot && (<Button
-            size="small"
-            variation="primary"
-            isLoading={isGeneratingLink}
-            loadingText="Generating link..."
-            disabled={isGeneratingLink || !canGenerateLink}
-            onClick={async () => {
-              try {
-                 const selectedArray = Array.from(selectedRows);
-
-                    if (!selectedArray.length) return;
-
-                    const fullPath = selectedArray[0];
-
-                    const trimmedPath = fullPath.replace(/\/$/, "");
-
-                    const parts = trimmedPath.split("/");
-
-                    const case_number = parts[parts.length - 1];
-
-                    const link = `${window.location.origin}/access/${case_number}`;
-
-                    await navigator.clipboard.writeText(link);
-
-                    toast.success("Link copied to clipboard!");
-
-              } catch (err) {
-                console.error(err);
-              } finally {
-                setIsGeneratingLink(false);
-              }
-            }}
-          >
-            Generate link
-          </Button>
-          )} */}
-
-
-          {/* {isRoot ? (
-            <CreateCase
-              basePath={`private/${identityId}/${currentPath}`}
-            />
-            )
-            :(
-              <CreateFolder
-              basePath={`private/${identityId}/${currentPath}`}
-              onCreated={() => {
-                loadFiles();
-              }}
-            />
-            )
-        } */}
-          {/* <DeleteObjects
-            selectedPaths={[...selected]}
-            onDeleted={loadFiles}
-          /> */}
-
-          {/* {identityId && !isRoot && (
-            <UploadButton
-              prefix={`private/${identityId}/${currentPath}`}
-              onUploaded={async () => {
-                await loadFiles();
-                if (currentCaseNumber) {
-                  setTimeout(() => {
-                    refetchEvidence();
-                  },);
-                }
-              }}
-            />
-          )} */}
         </Flex>
       </Flex>
       <Breadcrumbs 

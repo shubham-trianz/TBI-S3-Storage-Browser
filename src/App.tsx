@@ -56,11 +56,6 @@ function RequireExternalAuth({ children }: { children: ReactNode}) {
         
         setIsAuthenticated(true);
       } catch {
-        // Not authenticated - redirect to external login
-        const redirectUrl = location.pathname + location.search;
-        console.log("RequireExternalAuth - Not authenticated, redirecting to /external-login");
-        console.log("RequireExternalAuth - Will return to:", redirectUrl);
-        
         const fullUrl = location.pathname + location.search;
       navigate(
         `/external-login?redirect=${encodeURIComponent(fullUrl)}`,
@@ -136,9 +131,6 @@ function LoginPage() {
   useEffect(() => {
     if (authStatus === 'authenticated') {
       const from = (location.state as any)?.from || '/personal';
-
-      console.log('🔍 Redirecting after login to:', from); // Debug log
-
       navigate(from, { replace: true });
     }
   }, [authStatus, navigate, location]);

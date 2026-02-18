@@ -25,7 +25,6 @@ export const MyStorageBrowser = () => {
   const [identityId, setIdentityId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(getTabFromPath());
   useEffect(() => {
-    // setActiveTab(getTabFromPath());
     if (location.pathname.includes("shared")) {
     setActiveTab("shared");
   } else if (location.pathname.includes("received")) {
@@ -37,7 +36,6 @@ export const MyStorageBrowser = () => {
   useEffect(() => {
     async function loadSession() {
       const session = await fetchAuthSession();
-      console.log('sesssion: ', session)
       setIdentityId(session.identityId ?? null);
     }
     loadSession();

@@ -34,10 +34,9 @@ export const ExternalLoginPage = () => {
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  // 🔐 Get redirect URL from query params (set by generateLink.tsx)
+  // Get redirect URL from query params (set by generateLink.tsx)
   const redirectUrl = searchParams.get("redirect") || "/secure-view";
   
-  console.log("ExternalLoginPage - redirect URL:", redirectUrl);
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,11 +107,8 @@ export const ExternalLoginPage = () => {
       localStorage.setItem('external_access_token', accessToken);
       localStorage.setItem('external_token_expiry', expiryTime.toString());
       localStorage.setItem('external_user_email', userEmail);
-
-      console.log("🎉 External user authenticated");
-      console.log("Redirecting to:", redirectUrl);
       
-      // 🔐 Navigate to the secure-view page (or wherever redirect points)
+      // Navigate to the secure-view page (or wherever redirect points)
       navigate(redirectUrl, { replace: true });
       
     } catch (err: any) {

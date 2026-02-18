@@ -28,8 +28,8 @@ export function useCreateCase() {
       queryClient.invalidateQueries({ queryKey: ['cases'] });
     },
     onError: (err) => {
-      if (err.response?.status === 409) {
-        toast.error(err.response.data.message);
+      if (err.status === 409) {
+        toast.error(err.message);
       } else {
         toast.error("Something went wrong");
       }

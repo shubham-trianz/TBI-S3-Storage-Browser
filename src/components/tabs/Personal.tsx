@@ -12,17 +12,14 @@ import { CreateFolder } from '../utils/CreateFolder';
 import Breadcrumbs from "../utils/Breadcrumbs"
 import { useCases, useShareCaseTo, useShareExternal } from '../../hooks/cases';
 import { useCaseEvidence } from '../../hooks/useCaseEvidence';
-
 import CasesGrid from '../utils/CaseTable';
-
 import ShareDialog from '../utils/ShareDialog';
 import { useUser } from '../../context/UserContext';
 import { useCognitoUser } from '../../hooks/users';
 import toast from 'react-hot-toast';
-
-import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
-
-
+import { ListObjectsV2Command } from "@aws-sdk/client-s3";
+import amplifyConfig from '../../../amplify_outputs.json';
+import { createS3Client } from '../s3.service'
 
 
 export const Personal = () => {
@@ -36,23 +33,8 @@ export const Personal = () => {
   const [filesLoading, setFilesLoading] = useState(true);
 
   const [droppedFile, setDroppedFile] = useState<File | null>(null);
-
-  // const { mutateAsync: deleteEvidence } = useDeleteEvidence();
   const { mutateAsync: shareExternal } = useShareExternal();
   const { user_name, email } = useUser()
-
-  const createS3Client = async () => {
-    const session = await fetchAuthSession();
-
-    if (!session.credentials) {
-      throw new Error("No AWS credentials found");
-    }
-
-    return new S3Client({
-      region: "us-east-1",
-      credentials: session.credentials
-    });
-  };
   
     const currentPath = pathStack.join('');
   const currentCaseNumber =
@@ -71,9 +53,7 @@ export const Personal = () => {
   const selectedFolders = [...selected].filter(p => p.endsWith("/"));
   const { data: cases, isLoading } = useCases();
   const { mutate: shareCaseTo } = useShareCaseTo();
-
-    console.log('casesss: ', cases)
-
+  const bucket_name = amplifyConfig.storage.bucket_name
   const s3Ref = useRef<any>(null);
   useEffect(() => {
     createS3Client().then(client => {
@@ -106,7 +86,6 @@ export const Personal = () => {
   return map;
 }, [evidenceData]);
 
-  console.log('evidenceByKey: ', evidenceByKey)
   const rootFolderPrefix = identityId
   ? `private/${identityId}/`
   : null;
@@ -134,7 +113,7 @@ export const Personal = () => {
       const items = []
       const basePath = `private/${identityId}/${currentPath}`;
       const command = new ListObjectsV2Command({
-        Bucket: 'amplify-d1dgn0zrt9tb32-mai-mystoragebucket472d5355-sb6ffkrqvk1q',
+        Bucket: bucket_name,
         Prefix: basePath,
         Delimiter: '/'
       });
@@ -152,7 +131,6 @@ export const Personal = () => {
         if(item.Key == basePath) continue
         items.push(item)
       }
-      console.log('itemsssssssss: ', items)
       const mergedItems = items.map((item) => {
         if (item.type === "folder") {
           return item; 
@@ -165,16 +143,11 @@ export const Personal = () => {
           evidenceByKey.get(fullKey) ||
           evidenceByKey.get(fileName) ||
           null;
-        console.log('metadataaa: ', metadata)
-        // const { s3_key, ...restMetadata } = metadata;
         return {
           ...item,
           ...metadata
-          // ...restMetadata, 
-          // source_key: s3_key,
         };
       });
-      console.log('mergedItemssss: ', mergedItems)
       setFiles(mergedItems);
     } catch (err) {
       console.error('Error listing files', err);
@@ -254,10 +227,6 @@ export const Personal = () => {
               onShare={async (payload) => {
                 try {
                   const now = new Date().toISOString();
-
-                  /* =========================
-                    INTERNAL SHARING
-                  ========================== */
                   if (payload.mode === 'internal' && payload.users) {
                     const items: any[] = [];
 
@@ -299,21 +268,17 @@ export const Personal = () => {
                       }
                     }
 
-                    // await shareCaseTo(items);
-              console.log('Shared case items:', items);
-              await shareCaseTo(items);
-              setOpen(false)
-              toast.success('Success')
+                    await shareCaseTo(items);
+                    setOpen(false)
+                    toast.success('Success')
                   }
 
-                  /* =========================
-                    EXTERNAL SHARING
-                  ========================== */
+                  
                   if (payload.mode === 'external' && payload.externalEmails) {
                     for (const file of payload.files) {
                       const caseNumber = extractCaseNumber(file);
                       
-                      // 📦 Find the case metadata
+                      // Find the case metadata
                       const caseMeta = cases?.find(c => c.case_number === caseNumber);
                       
                       if (!caseMeta) {
@@ -321,7 +286,7 @@ export const Personal = () => {
                         continue;
                       }
 
-                      // 🔐 Build the wrapped URL on the frontend
+                      // Build the wrapped URL on the frontend
                       const frontendUrl = window.location.origin; 
                       const secureViewPath = `/secure-view?prefix=${encodeURIComponent(file)}`;
                       const wrappedUrl = `${frontendUrl}/external-login?redirect=${encodeURIComponent(secureViewPath)}`;
@@ -333,7 +298,7 @@ export const Personal = () => {
                           email: ext.email,
                           wrapped_url: wrappedUrl,
                           
-                          // 📦 NEW: Include case metadata
+                          // NEW: Include case metadata
                           case_title: caseMeta.case_title,
                           case_agents: caseMeta.case_agents,
                           jurisdiction: caseMeta.jurisdiction,
@@ -356,13 +321,6 @@ export const Personal = () => {
             />
           )}
 
-          {/* <Button
-            size="small"
-            onClick={loadFiles}
-            isLoading={loading}
-          >
-            Refresh
-          </Button> */}
 
           {isRoot && (<Button
             size="small"

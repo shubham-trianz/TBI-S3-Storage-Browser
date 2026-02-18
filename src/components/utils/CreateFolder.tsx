@@ -59,14 +59,12 @@ export const CreateFolder = ({
     try {
       setLoading(true);
 
-      // Refresh files from DB BEFORE checking for duplicates
       if (refreshFiles) {
         await refreshFiles();
       }
 
 
 
-      // Now check if folder already exists with fresh data
       if (folderExists && folderExists(folderName)) {
         const message = `"${folderName}" already exists. Try with another name?`;
         setError(message);
@@ -76,11 +74,8 @@ export const CreateFolder = ({
       }
 
       const folderPath = `${basePath}${folderName}/`;
-      console.log('folderPath: ', folderPath)
       if(receivedTab){
-        console.log('calling from received tab')
         const result =  await CreateFolderAPI.createFolder(folderPath)
-        console.log('result: ', result)
         if(result.status == 200){
           
 

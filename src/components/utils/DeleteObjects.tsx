@@ -15,7 +15,7 @@ import { useDeleteEvidence } from "../../hooks/useDeleteEvidence";
 
 type DeleteObjectsProps = {
   selectedPaths: string[];
-  currentCaseNumber?: string | null; // NEW
+  currentCaseNumber?: string | null; 
   onDeleted: () => void;
   disabled?: boolean;
 };
@@ -110,17 +110,11 @@ export const DeleteObjects = ({
         });
       }
 
-      // -----------------------------------------
-      // CASE 2: Root-level case deletion
-      // -----------------------------------------
       else {
         await deleteCase(selectedPaths);
         queryClient.invalidateQueries({ queryKey: ["cases"] });
       }
 
-      // -----------------------------------------
-      // SAFETY: Ensure S3 delete (fallback)
-      // -----------------------------------------
       await Promise.all(
         selectedPaths.map((path) =>
           remove({ path }).catch((err) =>
@@ -140,7 +134,6 @@ export const DeleteObjects = ({
       setConfirmOpen(false);
     }
   };
-
 
   return (
     <>
