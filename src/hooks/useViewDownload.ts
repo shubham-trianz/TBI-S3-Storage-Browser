@@ -2,15 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { FileViewDownloadAPI } from "../api/viewdownload";
 
 interface GetSignedUrl {
-  url: string; // signed URL from backend
+  url: string; 
 }
 
 export function useViewDownload(key: string, mode: 'view' | 'download') {
     return useQuery<GetSignedUrl>({
-    queryKey: ['signedurl', key, mode], // unique query key per file + mode
+    queryKey: ['signedurl', key, mode], 
     queryFn: () => FileViewDownloadAPI.getSignedUrl(key, mode),
-    enabled: false, // only run if key exists
-    staleTime: 60 * 1000, // cache for 1 min
+    enabled: false, 
+    staleTime: 60 * 1000, 
   })
 }
 

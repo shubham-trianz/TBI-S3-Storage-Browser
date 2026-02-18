@@ -4,7 +4,6 @@ import { Amplify } from 'aws-amplify';
 import App from './App.tsx';
 import outputs from '../amplify_outputs.json';
 import './api/interceptors'
-// import './index.css';
 import '@aws-amplify/ui-react/styles.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';

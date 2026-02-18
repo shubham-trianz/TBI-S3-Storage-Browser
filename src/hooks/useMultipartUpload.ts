@@ -66,7 +66,7 @@ export function useFileUploader() {
 
 
 
-  // 🔎 Check for stored upload on mount
+  // Check for stored upload on mount
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -81,7 +81,7 @@ export function useFileUploader() {
       let uploadId: string;
       let uploadedParts: { PartNumber: number; ETag: string }[] = [];
 
-      // 🔄 Resume if stored upload exists
+      // Resume if stored upload exists
       const storedRaw = localStorage.getItem(STORAGE_KEY);
 
       if (storedRaw) {

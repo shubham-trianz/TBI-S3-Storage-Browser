@@ -1,5 +1,4 @@
 import { useParams, useNavigate } from "react-router-dom";
-// import { Loader } from "@aws-amplify/ui-react";
 import { useResolveCase } from "../../hooks/useAccessResolver";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
@@ -33,7 +32,6 @@ export function AccessResolver() {
     }
   }, [data, isError, isLoading, navigate]);
 
-//   if (isLoading) return <Loader />;
   if (isLoading) return <FullScreenLoader text="Logging in..." />;
 
   return null;
