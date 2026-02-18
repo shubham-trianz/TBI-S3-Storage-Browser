@@ -804,12 +804,6 @@ if (isAccessDenied) {
           <Text color="#6b7280">
             You do not have permission to access this shared content.
           </Text>
-          <Button
-            variation="primary"
-            onClick={() => navigate("/external-login")}
-          >
-            Return to Login
-          </Button>
         </Flex>
       </Card>
     </Flex>
