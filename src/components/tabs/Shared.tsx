@@ -5,10 +5,10 @@ import {
   Heading,
   Button,
 } from "@aws-amplify/ui-react";
-import { UploadButton } from "../utils/UploadButton";
-import { DeleteObjects } from "../utils/DeleteObjects";
-import { CreateCase } from '../utils/CreateCase';
-import { CreateFolder } from '../utils/CreateFolder';
+// import { UploadButton } from "../utils/UploadButton";
+// import { DeleteObjects } from "../utils/DeleteObjects";
+// import { CreateCase } from '../utils/CreateCase';
+// import { CreateFolder } from '../utils/CreateFolder';
 import Breadcrumbs from "../utils/Breadcrumbs"
 import { useCases, useShareCaseTo } from '../../hooks/cases';
 import { useCaseEvidence } from '../../hooks/useCaseEvidence';
@@ -29,7 +29,7 @@ export const Shared = () => {
   const [files, setFiles] = useState<any[]>([]);
   const [identityId, setIdentityId] = useState<string | null>(null);
   const [pathStack, setPathStack] = useState<string[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [casesLoading, setCasesLoading] = useState(true);
@@ -56,15 +56,14 @@ export const Shared = () => {
 
  const {
   data: evidenceData,
-  refetch: refetchEvidence,
 } = useCaseEvidence(currentCaseNumber ?? '');
-  const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
-  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  // const currentFolderPrefix = identityId ? `private/${identityId}/${currentPath}` : null;
+  // const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const isRoot = pathStack.length === 0;
   const viewMode = isRoot ? "cases" : "files";
 
-  const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
-  const selectedFolders = [...selected].filter(p => p.endsWith("/"));
+  // const selectedFiles = [...selected].filter(p => !p.endsWith("/"));
+  // const selectedFolders = [...selected].filter(p => p.endsWith("/"));
   let { data: cases, isLoading } = useCases();
   const { mutate: shareCaseTo } = useShareCaseTo();
 
@@ -104,14 +103,14 @@ export const Shared = () => {
 }, [evidenceData]);
 
 
-  const rootFolderPrefix = identityId
-  ? `private/${identityId}/`
-  : null;
-  const canGenerateLink =
-    selectedFiles.length > 0 ||
-    selectedFolders.length === 1 ||
-    !!currentFolderPrefix ||
-    !!rootFolderPrefix;  
+  // const rootFolderPrefix = identityId
+  // ? `private/${identityId}/`
+  // : null;
+  // const canGenerateLink =
+  //   selectedFiles.length > 0 ||
+  //   selectedFolders.length === 1 ||
+  //   !!currentFolderPrefix ||
+  //   !!rootFolderPrefix;  
 
   useEffect(() => {
     async function init() {
@@ -195,7 +194,7 @@ export const Shared = () => {
       name = row.name
       setPathStack(prev => [...prev, `${name}/`]);
     }
-    setSelected(new Set());
+    // setSelected(new Set());
   }
 
   const [open, setOpen] = useState(false)
@@ -304,7 +303,7 @@ export const Shared = () => {
             Refresh
           </Button> */}
 
-          {isRoot && (<Button
+          {/* {isRoot && (<Button
             size="small"
             variation="primary"
             isLoading={isGeneratingLink}
@@ -339,10 +338,10 @@ export const Shared = () => {
           >
             Generate link
           </Button>
-          )}
+          )} */}
 
 
-          {isRoot ? (
+          {/* {isRoot ? (
             <CreateCase
               basePath={`private/${identityId}/${currentPath}`}
             />
@@ -355,25 +354,25 @@ export const Shared = () => {
               }}
             />
             )
-        }
-          <DeleteObjects
+        } */}
+          {/* <DeleteObjects
             selectedPaths={[...selected]}
             onDeleted={loadFiles}
-          />
+          /> */}
 
-          {identityId && !isRoot && (
-          <UploadButton
-            prefix={`private/${identityId}/${currentPath}`}
-            onUploaded={async () => {
-              await loadFiles();
-              if (currentCaseNumber) {
-                setTimeout(() => {
-                  refetchEvidence();
-                },);
-              }
-            }}
-          />
-        )}
+          {/* {identityId && !isRoot && (
+            <UploadButton
+              prefix={`private/${identityId}/${currentPath}`}
+              onUploaded={async () => {
+                await loadFiles();
+                if (currentCaseNumber) {
+                  setTimeout(() => {
+                    refetchEvidence();
+                  },);
+                }
+              }}
+            />
+          )} */}
         </Flex>
       </Flex>
       <Breadcrumbs 

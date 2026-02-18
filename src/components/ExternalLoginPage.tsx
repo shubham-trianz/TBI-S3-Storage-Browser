@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Flex,
@@ -21,10 +21,18 @@ export const ExternalLoginPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
   
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+  // Countdown timer for resend cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   // 🔐 Get redirect URL from query params (set by generateLink.tsx)
   const redirectUrl = searchParams.get("redirect") || "/secure-view";
@@ -57,6 +65,7 @@ export const ExternalLoginPage = () => {
       // Store session ID from backend
       setSessionId(data.sessionId);
       setStep("otp");
+      setResendCooldown(60);
       
     } catch (err: any) {
       console.error("Error sending OTP:", err);
@@ -138,13 +147,7 @@ export const ExternalLoginPage = () => {
       setSessionId(data.sessionId);
       setOtp("");
       setError("");
-      
-      // Show success message
-      const alertDiv = document.createElement('div');
-      alertDiv.style.cssText = 'position:fixed;top:20px;right:20px;background:#10b981;color:white;padding:1rem 1.5rem;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;';
-      alertDiv.textContent = '✓ OTP resent! Check your email.';
-      document.body.appendChild(alertDiv);
-      setTimeout(() => alertDiv.remove(), 3000);
+      setResendCooldown(60);
       
     } catch (err: any) {
       console.error("Error resending OTP:", err);
@@ -314,9 +317,9 @@ export const ExternalLoginPage = () => {
                   variation="link"
                   size="small"
                   onClick={handleResendOTP}
-                  isDisabled={loading}
+                  isDisabled={loading || resendCooldown > 0}
                 >
-                  Resend Code
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
                 </Button>
               </Flex>
             </Flex>
