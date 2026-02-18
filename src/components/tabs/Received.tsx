@@ -564,102 +564,12 @@ function handleRowClick(params: any) {
 
         <Flex gap="0.5rem">
 
-          {/* <div className="search-bar">
-            <div className="search-select-wrapper">
-              <select
-                className="search-select"
-                value={isRoot ? searchField : evidenceSearchField}
-                onChange={e => {
-                  if (isRoot) {
-                    setSearchField(e.target.value as SearchField);
-                  } else {
-                    setEvidenceSearchField(e.target.value as EvidenceSearchField);
-                  }
-                }}
-              >
-                {(isRoot ? SEARCH_FIELDS : EVIDENCE_SEARCH_FIELDS).map(f => (
-                  <option key={f.key} value={f.key}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
-              <span className="select-arrow">▼</span>
-            </div>
-
-            <div className="search-input-wrapper">
-              <input
-                className="search-input"
-                type="text"
-                placeholder={`Search by ${
-                  isRoot
-                    ? SEARCH_FIELDS.find(f => f.key === searchField)?.label
-                    : EVIDENCE_SEARCH_FIELDS.find(f => f.key === evidenceSearchField)?.label
-                }`}
-                value={searchValue}
-                onChange={e => setSearchValue(e.target.value)}
-                disabled={isRoot ? !receivedCases?.cases?.length : !files?.length}
-              />
-
-              {searchValue && (
-                <button
-                  className="clear-btn"
-                  onClick={() => setSearchValue('')}
-                  aria-label="Clear search"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          </div> */}
-
-          {/* <Button
-            size="small"
-            variation="primary"
-            isLoading={isGeneratingLink}
-            loadingText="Generating link..."
-            disabled={isGeneratingLink || !canGenerateLink}
-            onClick={async () => {
-              try {
-                setIsGeneratingLink(true);
-
-                // CASE 1: One or more files selected → ZIP only those files
-                if (selectedFiles.length > 0) {
-                  await generateAndCopyLink({
-                    objectKeys: selectedFiles,
-                  });
-                  return;
-                }
-
-                // CASE 2: Folder selected → ZIP that folder
-                if (selectedFolders.length === 1) {
-                  await generateAndCopyLink({
-                    folderPrefix: selectedFolders[0],
-                  });
-                  return;
-                }
-
-                // CASE 3: Inside folder, nothing selected → ZIP current folder
-                if (!isRoot && currentFolderPrefix) {
-                  await generateAndCopyLink({
-                    folderPrefix: currentFolderPrefix,
-                  });
-                }
-              } catch (err) {
-                console.error(err);
-              } finally {
-                setIsGeneratingLink(false);
-              }
-            }}
-          >
-            Generate link
-          </Button>
-           */}
+    
            {isInsideCase && activeCase.canWrite && (
             <CreateFolder
               basePath={`${baseKey}${pathStack.join('')}`}
               receivedTab={true}
               onCreated={() => {
-                // loadFiles();
               }}
             />
            )}
@@ -688,7 +598,6 @@ function handleRowClick(params: any) {
       <Breadcrumbs 
         pathStack={pathStack}
         onNavigate={(x: string[]) => {
-          // setFiles([]);
           setFilesLoading(true)
           setPathStack(x)
         }}
@@ -705,18 +614,13 @@ function handleRowClick(params: any) {
         loading={viewMode === "received" ? casesLoading : filesLoading}
         handleRowClick={handleRowClick}
         viewMode={viewMode}
-        // handleSelected={(selected: any) => setSelectedRows(selected)}
       />
-
-      
 
       {!isRoot && pathStack.length === 1 && (isEvidenceLoading || isEvidenceFetching) && (
         <div style={{ padding: '1rem', textAlign: 'center', background: '#f0f0f0' }}>
           Loading evidence metadata...
         </div>
       )}
-
-          
     </>
   );
 };

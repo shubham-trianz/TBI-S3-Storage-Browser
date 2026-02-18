@@ -136,9 +136,6 @@ function LoginPage() {
   useEffect(() => {
     if (authStatus === 'authenticated') {
       const from = (location.state as any)?.from || '/personal';
-
-      console.log('🔍 Redirecting after login to:', from); // Debug log
-
       navigate(from, { replace: true });
     }
   }, [authStatus, navigate, location]);

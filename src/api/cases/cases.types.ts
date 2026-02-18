@@ -45,20 +45,16 @@ export interface ReceivedCase {
 }
 
 export interface ShareCaseToPayload {
-  // DynamoDB keys
-  receiver_user_id: string;           // RECEIVER#<receiver_user_id>
-  case_number: string;           // CASE#<case_number>
+  receiver_user_id: string;
+  case_number: string;
 
-  gsi1pk: string;       // OWNER#<owner_user_id>
-  gsi1sk: string;       // CASE#<case_number>#RECEIVER#<receiver_user_id>
+  gsi1pk: string;       
+  gsi1sk: string;      
 
-  // Identifiers
-  // case_number: string;
   owner_user: string;
   receiver_user: string;
   receiver_email: string;
 
-  // Metadata snapshot
   case_title: string;
   jurisdiction?: string[];
   case_agents?: string;
@@ -66,13 +62,10 @@ export interface ShareCaseToPayload {
   source_key: string;
   owner_email?: string;
 
-  // Permissions
   permissions: CasePermissions;
 
-  // Audit
-  shared_at: string;    // ISO timestamp
-  updated_at?: string;  // ISO timestamp
-        // epoch seconds (optional)
+  shared_at: string;    
+  updated_at?: string;  
 }
 
 export interface ReceiveCasePayload {
