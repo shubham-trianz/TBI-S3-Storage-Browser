@@ -12,7 +12,6 @@ export function AccessResolver() {
 
   useEffect(() => {
     if (isLoading) return;
-    console.log('data: ', data)
     if (isError) {
       toast.error(`You don’t have permission to view the case - ${data?.case_number} `);
       navigate("/received", { replace: true });

@@ -76,7 +76,6 @@ export const CreateFolder = ({
       const folderPath = `${basePath}${folderName}/`;
       if(receivedTab){
         const result =  await CreateFolderAPI.createFolder(folderPath)
-        console.log('result: ', result)
         if(result.status == 200){
           
 

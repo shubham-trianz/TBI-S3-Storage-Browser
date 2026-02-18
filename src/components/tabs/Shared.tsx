@@ -125,7 +125,6 @@ export const Shared = () => {
         if(item.Key == basePath) continue
         items.push(item)
       }
-      console.log('itemsssssssss: ', items)
       const mergedItems = items.map((item) => {
         if (item.type === "folder") {
           return item; 
