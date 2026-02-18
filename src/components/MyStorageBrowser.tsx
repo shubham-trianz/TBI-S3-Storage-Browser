@@ -36,7 +36,6 @@ export const MyStorageBrowser = () => {
   useEffect(() => {
     async function loadSession() {
       const session = await fetchAuthSession();
-      console.log('sesssion: ', session)
       setIdentityId(session.identityId ?? null);
     }
     loadSession();

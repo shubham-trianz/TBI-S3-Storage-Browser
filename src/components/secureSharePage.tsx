@@ -103,8 +103,6 @@ export const SecureSharePage = () => {
       }
 
       if (timeLeft <= 0) {
-        console.log("🔒 Session expired - forcing logout");
-        
         localStorage.removeItem('external_access_token');
         localStorage.removeItem('external_token_expiry');
         localStorage.removeItem('external_user_email');
