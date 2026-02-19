@@ -14,6 +14,7 @@ import {
   Case,
   ShareCaseToPayload,
 } from "../../api/cases/cases.types";
+import toast from "react-hot-toast";
 
 export interface S3BaseObject {
   Key: string;
@@ -170,7 +171,7 @@ export default function CasesGrid(props: GridProps) {
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
-          minWidth: 0, // 🔥 critical
+          minWidth: 0,
           flexGrow: 1,
         }}
       >
@@ -214,15 +215,24 @@ export default function CasesGrid(props: GridProps) {
       const id = params.row.id
       const handleView = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        const url = await FileViewDownloadAPI.getSignedUrl(id, 'view');
-        console.log('url: ', url)
-        window.open(url, '_blank');
+        try{
+          const url = await FileViewDownloadAPI.getSignedUrl(id, 'view');
+          window.open(url, '_blank');
+        }
+        catch(err: any){
+          toast.error(err.message)
+        }
       };
 
       const handleDownload = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        const url = await FileViewDownloadAPI.getSignedUrl(id, 'download');
-        window.location.href = url;
+        try{
+          const url = await FileViewDownloadAPI.getSignedUrl(id, 'download');
+          window.location.href = url;
+        }
+        catch(err: any){
+          toast.error(err.message)
+        }
       };
 
       return (
@@ -234,11 +244,12 @@ export default function CasesGrid(props: GridProps) {
                 </IconButton>
               </Tooltip>
             )}
-            <Tooltip title="Download">
+
+            {!isFolder && (<Tooltip title="Download">
               <IconButton size="small" onClick={handleDownload}>
                 <DownloadIcon fontSize="small" color="secondary"/>
               </IconButton>
-            </Tooltip>
+            </Tooltip>)}
         </>
       );
     },
