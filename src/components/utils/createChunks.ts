@@ -1,4 +1,4 @@
-export function createChunks(file: File, chunkSize = 20 * 1024 * 1024) {
+export function createChunks(file: File, chunkSize = 15 * 1024 * 1024) {
   const chunks = [];
   let start = 0;
   while (start < file.size) {

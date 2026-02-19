@@ -22,27 +22,84 @@ interface StoredUpload {
   uploadedParts: { PartNumber: number; ETag: string }[];
 }
 
-const STORAGE_KEY = "multipart-upload";
 
 export function useFileUploader() {
   const [progress, setProgress] = useState(0);
   const [hasStoredUpload, setHasStoredUpload] = useState(false);
 
   const pauseRef = useRef(false);
+  const controllersRef = useRef<AbortController[]>([]);
+
 
   const [isPaused, setIsPaused] = useState(false);
   const [isNetworkError, setIsNetworkError] = useState(false);
   const queryClient = useQueryClient();
+  const currentUploadRef = useRef<{ uploadId: string; key: string } | null>(null);
 
   const pause = () => {
+    if (pauseRef.current) return; // prevent double pause
     pauseRef.current = true;
     setIsPaused(true);
+    controllersRef.current.forEach(c => {
+      try {
+        c.abort();
+      } catch {
+        //
+      }
+  });
+    controllersRef.current = [];
   };
 
   const resume = () => {
     pauseRef.current = false;
     setIsPaused(false);
   };
+
+  async function runWithLimit(
+    tasks: (() => Promise<void>)[],
+    limit: number
+  ) {
+    let index = 0;
+    const workers = Array.from({ length: limit }).map(async () => {
+      while (index < tasks.length) {
+        const currentIndex = index++;
+        await uploadWithRetry(tasks[currentIndex]);
+      }
+    });
+
+    await Promise.all(workers);
+  }
+
+  async function uploadWithRetry(
+    task: () => Promise<void>,
+    retries = 3
+  ) {
+    let attempt = 0;
+
+    while (attempt < retries) {
+      while (pauseRef.current) {
+        await new Promise(r => requestAnimationFrame(r));
+      }
+      try {
+        return await task();
+      } catch (error) {
+        console.log('failed this upload: ', error)
+        const err = error as { name?: string };
+        if (err?.name === "AbortError") {
+          // If paused intentionally, do NOT retry
+          if (pauseRef.current) {
+            return; // silently exit
+          }
+        }
+        attempt++;
+        console.log(`failed this upload. Retrying for ${attempt} time`)
+        if (attempt >= retries) throw err;
+
+        const delay = 1000 * Math.pow(2, attempt);
+        await new Promise(res => setTimeout(res, delay));
+      }
+    }
+  }
 
   useEffect(() => {
   const handleOffline = () => {
@@ -64,97 +121,184 @@ export function useFileUploader() {
   };
 }, []);
 
+  const getStorageKey = (key: string) =>`multipart-upload-${key}`;
 
+  const cancelUpload = async () => {
+    pauseRef.current = true;
+    setIsPaused(false);
+    setIsNetworkError(false);
 
-  // Check for stored upload on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      setHasStoredUpload(true);
+    controllersRef.current.forEach(c => {
+      try { c.abort(); } catch {}
+    });
+    controllersRef.current = [];
+
+    if (currentUploadRef.current) {
+      try {
+        await FileUploadAPI.abort(
+          currentUploadRef.current.uploadId,
+          currentUploadRef.current.key
+        );
+      } catch {
+        // ignore backend failure
+      }
     }
-  }, []);
+
+    // clear local storage
+    const storageKey = `multipart-upload-${currentUploadRef.current?.key}`;
+    localStorage.removeItem(storageKey);
+
+    setProgress(0);
+  };
+
+  const retryUpload = () => {
+    if (!uploadMutation.variables) return;
+
+    uploadMutation.mutate(uploadMutation.variables);
+  };
+
 
   const uploadMutation = useMutation<UploadResult | null, Error, UploadInput>({
     mutationFn: async ({ file, key, metadata }) => {
-      setProgress(0);
+      const storageKey = getStorageKey(key);
+      pauseRef.current = false;
+      setIsPaused(false);
+      setIsNetworkError(false);
+      controllersRef.current = [];
 
-      let uploadId: string;
-      let uploadedParts: { PartNumber: number; ETag: string }[] = [];
+      try{
+        setProgress(0);
 
-      // Resume if stored upload exists
-      const storedRaw = localStorage.getItem(STORAGE_KEY);
+        let uploadId: string;
+        const uploadedPartsMap = new Map<number, string>();
 
-      if (storedRaw) {
-        const stored: StoredUpload = JSON.parse(storedRaw);
-        uploadId = stored.uploadId;
-        uploadedParts = stored.uploadedParts;
-      } else {
-        const init = await FileUploadAPI.initiate(
-          key,
-          file.type,
-          metadata
-        );
-        uploadId = init.uploadId;
+        // Resume if stored upload exists
+        const storedRaw = localStorage.getItem(storageKey);
 
-        localStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({
-            uploadId,
+        if (storedRaw) {
+          const stored: StoredUpload = JSON.parse(storedRaw);
+          uploadId = stored.uploadId;
+          if (stored.key !== key) {
+            localStorage.removeItem(storageKey);
+          } else {
+            uploadId = stored.uploadId;
+            stored.uploadedParts.forEach(p => {
+              uploadedPartsMap.set(p.PartNumber, p.ETag);
+            });
+          }
+          currentUploadRef.current = { uploadId, key };
+        } else {
+          const init = await FileUploadAPI.initiate(
             key,
-            fileName: file.name,
-            fileType: file.type,
-            uploadedParts: [],
-          })
-        );
-      }
-
-      const chunks = createChunks(file);
-      const partNumbers = chunks.map((_, i) => i + 1);
-
-      const BATCH_SIZE = 20;
-
-      for(let i=0; i<chunks.length; i += BATCH_SIZE){
-        const batchParts = partNumbers.slice(i, i+BATCH_SIZE);
-
-        while (pauseRef.current) {
-          await new Promise(r => requestAnimationFrame(r));
+            file.type,
+            metadata
+          );
+          uploadId = init.uploadId;
+          currentUploadRef.current = { uploadId, key };
+          localStorage.setItem(
+            storageKey,
+            JSON.stringify({
+              uploadId,
+              key,
+              fileName: file.name,
+              fileType: file.type,
+              uploadedParts: [],
+            })
+          );
         }
-        const { urls } = await FileUploadAPI.presign(uploadId, key, batchParts);
 
-        await Promise.all(
-          urls.map(async (url, idx) => {
-            const partNumber = batchParts[idx];
-            if (uploadedParts.find(p => p.PartNumber === partNumber)) return;
+        const chunks = createChunks(file);
+        const partNumbers = chunks.map((_, i) => i + 1);
 
-            while (pauseRef.current) await new Promise(r => requestAnimationFrame(r));
+        const tasks = partNumbers.map((partNumber) => {
+          return async () => {
 
-            const resp = await fetch(url.url, { method: "PUT", body: chunks[partNumber - 1] });
+            // if (uploadedParts.find(p => p.PartNumber === partNumber)) return;
+            if (uploadedPartsMap.has(partNumber)) return;
+
+            while (pauseRef.current) {
+              await new Promise(r => requestAnimationFrame(r));
+            }
+
+            const { urls } = await FileUploadAPI.presign(uploadId, key, [partNumber]);
+            const url = urls[0];
+            
+            const controller = new AbortController();
+            controllersRef.current.push(controller);
+            const resp = await fetch(url.url, {
+              method: "PUT",
+              body: chunks[partNumber - 1],
+              signal: controller.signal
+            });
+            controllersRef.current = controllersRef.current.filter(c => c !== controller);
+
             if (!resp.ok) throw new Error("Upload failed");
+
             const etag = resp.headers.get("etag");
             if (!etag) throw new Error("Missing ETag");
-            uploadedParts.push({ PartNumber: partNumber, ETag: etag });
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ uploadId, key, fileName: file.name, fileType: file.type, uploadedParts }));
-            setProgress(Math.round((uploadedParts.length / chunks.length) * 100));
-          })
-        );
+
+            // uploadedParts.push({ PartNumber: partNumber, ETag: etag });
+            uploadedPartsMap.set(partNumber, etag);
+            const partsArray = Array.from(uploadedPartsMap.entries()).map(([PartNumber, ETag]) => ({ PartNumber, ETag }));
+
+            localStorage.setItem(storageKey, JSON.stringify({
+              uploadId,
+              key,
+              fileName: file.name,
+              fileType: file.type,
+              uploadedParts: partsArray
+            }));
+
+            // setProgress(Math.round((uploadedParts.length / chunks.length) * 100));
+            setProgress(Math.round((uploadedPartsMap.size / chunks.length) * 100));
+          };
+        });
+
+
+        const CONCURRENCY_LIMIT = 5;
+
+        await runWithLimit(tasks, CONCURRENCY_LIMIT);
+
+
+        // if (pauseRef.current) return null;
+        // const sortedParts = uploadedParts.sort((a, b) => a.PartNumber - b.PartNumber);
+        const sortedParts = Array.from(uploadedPartsMap.entries())
+                            .map(([PartNumber, ETag]) => ({ PartNumber, ETag }))
+                            .sort((a, b) => a.PartNumber - b.PartNumber);
+
+        if (uploadedPartsMap.size !== chunks.length) {
+          throw new Error("Upload incomplete. Some parts failed.");
+        }
+        const result = await FileUploadAPI.complete({
+          uploadId,
+          key,
+          parts: sortedParts,
+        });
+
+        // Clear storage after success
+        localStorage.removeItem(storageKey);
+        setHasStoredUpload(false);
+
+        return result;
+      }catch(error: unknown){
+        const err = error as { name?: string };
+        if (err?.name === "AbortError") {
+          // intentional pause — do nothing
+          return null;
+        }
+        if (!navigator.onLine) {
+          pauseRef.current = true;
+          setIsPaused(true);
+          setIsNetworkError(true);
+        }
+        throw error;
       }
-
-      if (pauseRef.current) return null;
-      const sortedParts = uploadedParts.sort((a, b) => a.PartNumber - b.PartNumber);
-      const result = await FileUploadAPI.complete({
-        uploadId,
-        key,
-        parts: sortedParts,
-      });
-
-      // Clear storage after success
-      localStorage.removeItem(STORAGE_KEY);
-      setHasStoredUpload(false);
-
-      return result;
     },
     onSuccess: () =>  {
       queryClient.invalidateQueries({ queryKey: ['evidence'] });
+      setProgress(0)
+      setIsPaused(false)
+      pauseRef.current = false
       toast.success('File Uploaded')
     },
     onError: (error) => {
@@ -167,6 +311,8 @@ export function useFileUploader() {
     progress,
     pause,
     resume,
+    cancelUpload,
+    retryUpload,
     hasStoredUpload,
     isPaused,
     isNetworkError
