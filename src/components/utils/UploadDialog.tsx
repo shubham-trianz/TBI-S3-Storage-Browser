@@ -47,6 +47,8 @@ export function UploadDialog({
     progress,
     pause,
     resume,
+    cancelUpload,
+    retryUpload,
     isPaused,
     isNetworkError
   } = useFileUploader();
@@ -66,6 +68,13 @@ export function UploadDialog({
 
   // const validateEvidenceNumber = (value: string) =>
   //   /^\d{4}-\d{7}-E\d+$/.test(value);
+
+  useEffect(() => {
+  if (uploadMutation.isSuccess) {
+    onUploaded?.();
+    onClose();
+  }
+}, [uploadMutation.isSuccess]);
 
   const handleUpload = async () => {
     if (!file) return;
@@ -214,6 +223,18 @@ export function UploadDialog({
               </Stack>
             </Box>
           )}
+          {uploadMutation.isError && (
+            <Button
+              variant="contained"
+              color="warning"
+              onClick={() => {
+                setError(null)
+                retryUpload()
+              }}
+            >
+              Retry
+            </Button>
+          )}
 
           {error && (
             <Typography color="error">
@@ -224,13 +245,23 @@ export function UploadDialog({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button 
+        {/* <Button 
           onClick={() => {
             setFile(null);        
             setError(null);
             onClose();            
           }}>
             Cancel
+        </Button> */}
+        <Button
+          onClick={async () => {
+            await cancelUpload();
+            setFile(null);
+            setError(null);
+            onClose();
+          }}
+        >
+          Cancel
         </Button>
 
         <Button
