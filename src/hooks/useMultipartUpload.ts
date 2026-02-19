@@ -82,8 +82,9 @@ export function useFileUploader() {
       }
       try {
         return await task();
-      } catch (err) {
-        console.log('failed this upload: ', err)
+      } catch (error) {
+        console.log('failed this upload: ', error)
+        const err = error as { name?: string };
         if (err?.name === "AbortError") {
           // If paused intentionally, do NOT retry
           if (pauseRef.current) {
@@ -279,8 +280,9 @@ export function useFileUploader() {
         setHasStoredUpload(false);
 
         return result;
-      }catch(error){
-        if (error?.name === "AbortError") {
+      }catch(error: unknown){
+        const err = error as { name?: string };
+        if (err?.name === "AbortError") {
           // intentional pause — do nothing
           return null;
         }
