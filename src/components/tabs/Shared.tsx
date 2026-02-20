@@ -13,8 +13,9 @@ import ShareDialog from '../utils/ShareDialog';
 import { useUser } from '../../context/UserContext';
 import { useCognitoUser } from '../../hooks/users';
 import toast from 'react-hot-toast';
-import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
-
+import { ListObjectsV2Command } from "@aws-sdk/client-s3";
+import amplifyConfig from '../../../amplify_outputs.json';
+import { createS3Client } from '../s3.service'
 
 
 
@@ -27,18 +28,6 @@ export const Shared = () => {
   const [filesLoading, setFilesLoading] = useState(true);
   const { user_name, email } = useUser()
 
-  const createS3Client = async () => {
-    const session = await fetchAuthSession();
-
-    if (!session.credentials) {
-      throw new Error("No AWS credentials found");
-    }
-
-    return new S3Client({
-      region: "us-east-1",
-      credentials: session.credentials
-    });
-  };
   
     const currentPath = pathStack.join('');
   const currentCaseNumber =
@@ -53,6 +42,7 @@ export const Shared = () => {
   let { data: cases, isLoading } = useCases();
   const { mutate: shareCaseTo } = useShareCaseTo();
 
+  const bucket_name = amplifyConfig.storage.bucket_name
   const s3Ref = useRef<any>(null);
   useEffect(() => {
     createS3Client().then(client => {
@@ -107,7 +97,7 @@ export const Shared = () => {
       const items = []
       const basePath = `private/${identityId}/${currentPath}`;
       const command = new ListObjectsV2Command({
-        Bucket: 'amplify-d1dgn0zrt9tb32-mai-mystoragebucket472d5355-sb6ffkrqvk1q',
+        Bucket: bucket_name,
         Prefix: basePath,
         Delimiter: '/'
       });
