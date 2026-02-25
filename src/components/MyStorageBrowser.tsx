@@ -5,13 +5,12 @@ import { useUser } from "../context/UserContext";
 import { Personal } from "./tabs/Personal";
 import { Shared } from "./tabs/Shared";
 import  Received  from "./tabs/Received";
-import Header from "./utils/Header";
 import FullScreenLoader from "./utils/FullScreenLoader";
 import { useLocation, useNavigate } from "react-router-dom";
-
+import Box from "@mui/material/Box";
 
 export const MyStorageBrowser = () => {
-  const { email, signOut } = useUser()
+  const { email } = useUser()
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -48,27 +47,25 @@ export const MyStorageBrowser = () => {
 
 return (
     <>  
-      <Header
-        displayName={displayName}
-        signOut={signOut}
-      />
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => {
-          setActiveTab(value);
-          navigate(`/${value}`);
-        }}
-        items={[
-          {
-            label: "Personal",
-            value: "private",
-            content: <Personal />,
-          },
-          { label: "Shared", value: "shared", content: <Shared /> },
-          { label: "Received", value: "received", content: <Received /> },
-        ]}
-      />
+      <Box sx={{ mt: 3, px: 3 }}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            setActiveTab(value);
+            navigate(`/${value}`);
+          }}
+          items={[
+            {
+              label: "Personal",
+              value: "private",
+              content: <Personal />,
+            },
+            { label: "Shared", value: "shared", content: <Shared /> },
+            { label: "Received", value: "received", content: <Received /> },
+          ]}
+        />
+      </Box>
     </>
   );
 };

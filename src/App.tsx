@@ -25,6 +25,7 @@ import React from 'react';
 Amplify.configure(config);
 import { ReactNode } from "react";
 import { AccessResolver } from './components/utils/AccessResolver';
+import PrimarySearchAppBar from './components/navbar/navbar';
 
 /* -----------------------------------------
    Auth Guard for External Users (Session Token Based)
@@ -174,7 +175,7 @@ function AuthenticatedApp() {
           },
         }}
       />
-
+      <PrimarySearchAppBar/>
       <Routes>
         {/* Prevent logged-in users from visiting login */}
         <Route path="/login" element={<Navigate to="/personal" replace />} />
