@@ -210,7 +210,7 @@ const FileRow = ({
 /* ─────────────────────────────────────────────────────────────────────────────
    InfoRow
 ───────────────────────────────────────────────────────────────────────────── */
-const InfoRow = ({ label, value, t }: { label: string; value: string; t: Theme }) => (
+const InfoRow = ({ label, value, t }: { label: React.ReactNode; value: string; t: Theme }) => (
   <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", padding: "0.5rem 1rem" }}>
     <span style={{ fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.08em",
                    textTransform: "uppercase" as const, color: t.evidenceKeyColor }}>{label}</span>
@@ -765,68 +765,135 @@ export const SecureSharePage = () => {
               </div>
 
               {/* Info panel */}
-              {selectedFile && (
-                <div style={{ width: "280px", flexShrink: 0, display: "flex",
-                              flexDirection: "column", gap: "1rem" }}>
-                  {currentEvidence && (
-                    <div style={{ backgroundColor: t.evidenceCardBg,
-                                  border: `1px solid ${t.evidenceBorder}`,
-                                  borderRadius: "10px", overflow: "hidden",
-                                  transition: "background 0.25s" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem",
-                                    padding: "0.75rem 1rem",
-                                    borderBottom: `1px solid ${t.evidenceBorder}` }}>
-                        <FileCheck size={14} color={t.green} />
-                        <span style={{ fontSize: "0.65rem", fontWeight: 700, letterSpacing: "0.1em",
-                                       textTransform: "uppercase", color: t.evidenceLabelColor }}>
-                          Evidence Record
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", padding: "0.5rem 0" }}>
-                        <InfoRow t={t} label="Evidence No." value={currentEvidence.evidence_number} />
-                        {currentEvidence.description && (
-                          <InfoRow t={t} label="Description" value={currentEvidence.description} />
-                        )}
-                        <InfoRow t={t} label="Uploaded" value={formatDate(currentEvidence.uploaded_at)} />
-                      </div>
-                    </div>
-                  )}
+{selectedFile && (
+  <div
+    style={{
+      width: "280px",
+      flexShrink: 0,
+      display: "flex",
+      flexDirection: "column",
+      gap: "1rem",
+    }}
+  >
+    {currentEvidence && (
+      <div
+        style={{
+          backgroundColor: t.evidenceCardBg,
+          border: `1px solid ${t.evidenceBorder}`,
+          borderRadius: "10px",
+          overflow: "hidden",
+          transition: "background 0.25s",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.75rem 1rem",
+            borderBottom: `1px solid ${t.evidenceBorder}`,
+          }}
+        >
+          <FileCheck size={14} color={t.green} />
+          <span
+            style={{
+              fontSize: "0.65rem",
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: t.evidenceLabelColor,
+            }}
+          >
+            Evidence Record
+          </span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", padding: "0.5rem 0" }}>
+          <InfoRow t={t} label="Evidence No." value={currentEvidence.evidence_number} />
+          {currentEvidence.description && (
+            <InfoRow t={t} label="Description" value={currentEvidence.description} />
+          )}
+          <InfoRow t={t} label="Uploaded" value={formatDate(currentEvidence.uploaded_at)} />
+        </div>
+      </div>
+    )}
 
-                  <div style={{ backgroundColor: t.metaCardBg, border: `1px solid ${t.border}`,
-                                borderRadius: "10px", overflow: "hidden",
-                                transition: "background 0.25s, border 0.25s" }}>
-                    <div style={{ padding: "0.75rem 1rem", fontSize: "0.65rem", fontWeight: 700,
-                                  letterSpacing: "0.1em", textTransform: "uppercase",
-                                  color: t.metaCardHeader,
-                                  borderBottom: `1px solid ${t.metaDivider}` }}>
-                      File Details
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", padding: "0.25rem 0" }}>
-                      {[
-                        { icon: <HardDrive size={13} color={t.metaKey} />, label: "Size", value: formatFileSize(selectedFile.size) },
-                        { icon: getFileIcon(selectedFile.name, 13, t.metaKey), label: "Type", value: selectedFile.name.split(".").pop()?.toUpperCase() || "—" },
-                        ...(selectedFile.lastModified ? [{ icon: <Clock size={13} color={t.metaKey} />, label: "Modified", value: formatDate(selectedFile.lastModified) }] : []),
-                      ].map((row, i, arr) => (
-                        <>
-                          <div key={row.label} style={{ display: "flex", justifyContent: "space-between",
-                                        alignItems: "center", padding: "0.6rem 1rem" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem",
-                                          fontSize: "0.75rem", color: t.metaKey, fontWeight: 600,
-                                          textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                              {row.icon}{row.label}
-                            </div>
-                            <div style={{ fontSize: "0.82rem", color: t.textMeta, fontWeight: 500,
-                                          fontVariantNumeric: "tabular-nums" }}>{row.value}</div>
-                          </div>
-                          {i < arr.length - 1 && (
-                            <div style={{ height: 1, backgroundColor: t.metaDivider, margin: "0 1rem" }} />
-                          )}
-                        </>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+    {/* File Details — now styled the same as Evidence Record */}
+    <div
+      style={{
+        backgroundColor: t.evidenceCardBg,          // match Evidence Record
+        border: `1px solid ${t.evidenceBorder}`,     // match Evidence Record
+        borderRadius: "10px",
+        overflow: "hidden",
+        transition: "background 0.25s, border 0.25s",
+      }}
+    >
+      {/* Header strip matches Evidence Record format */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          padding: "0.75rem 1rem",
+          borderBottom: `1px solid ${t.evidenceBorder}`,
+        }}
+      >
+        <HardDrive size={14} color={t.green} />
+        <span
+          style={{
+            fontSize: "0.65rem",
+            fontWeight: 700,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: t.evidenceLabelColor, // consistent header label color
+          }}
+        >
+          File Details
+        </span>
+      </div>
+
+      {/* Body uses InfoRow rows to mirror Evidence Record spacing and density */}
+      <div style={{ display: "flex", flexDirection: "column", padding: "0.5rem 0" }}>
+        {/* Size */}
+        <InfoRow
+          t={t}
+          label={
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+              <HardDrive size={13} color={t.metaKey} />
+              <span>Size</span>
+            </span>
+          }
+          value={formatFileSize(selectedFile.size)}
+        />
+
+        {/* Type */}
+        <InfoRow
+          t={t}
+          label={
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+              {getFileIcon(selectedFile.name, 13, t.metaKey)}
+              <span>Type</span>
+            </span>
+          }
+          value={selectedFile.name.split(".").pop()?.toUpperCase() || "—"}
+        />
+
+        {/* Modified (optional) */}
+        {selectedFile.lastModified ? (
+          <InfoRow
+            t={t}
+            label={
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                <Clock size={13} color={t.metaKey} />
+                <span>Modified</span>
+              </span>
+            }
+            value={formatDate(selectedFile.lastModified)}
+          />
+        ) : null}
+      </div>
+    </div>
+  </div>
+)}
             </div>
           </main>
         </div>
