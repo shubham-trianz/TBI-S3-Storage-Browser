@@ -72,12 +72,9 @@ export interface ReceiveCasePayload {
   user_name: string
 }
 
-export interface ReceiveCasePayload {
-  user_name: string
-}
-
 export interface EvidenceItem {
   evidence_number: string;
+  evidence_type?: string;
   description: string;
   source_key: string;
   uploaded_at: string;
@@ -86,6 +83,15 @@ export interface EvidenceItem {
 export interface EvidenceListResponse {
   items: EvidenceItem[];
   nextCursor?: string | null;
+}
+
+// New: payload for creating/updating evidence metadata
+export interface EvidenceCreatePayload {
+  source_key: string;
+  evidence_number?: string;
+  evidence_type?: string;
+  description?: string;
+  uploaded_at?: string;
 }
 
 export type ShareExternalPayload = {
