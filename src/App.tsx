@@ -220,6 +220,14 @@ function AuthenticatedApp() {
             </RequireAuth>
           }
         />
+        <Route
+          path="/temp"
+          element={
+            <RequireAuth>
+              <MyStorageBrowser />
+            </RequireAuth>
+          }
+        />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/personal" replace />} />
