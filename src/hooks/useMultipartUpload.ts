@@ -29,6 +29,7 @@ export function useFileUploader() {
 
   const pauseRef = useRef(false);
   const controllersRef = useRef<AbortController[]>([]);
+  const [isCompleted, setIsCompleted] = useState(false);
 
 
   const [isPaused, setIsPaused] = useState(false);
@@ -37,6 +38,7 @@ export function useFileUploader() {
   const currentUploadRef = useRef<{ uploadId: string; key: string } | null>(null);
 
   const pause = () => {
+    console.log('paused clicked')
     if (pauseRef.current) return; // prevent double pause
     pauseRef.current = true;
     setIsPaused(true);
@@ -51,6 +53,7 @@ export function useFileUploader() {
   };
 
   const resume = () => {
+    console.log('resume clicked')
     pauseRef.current = false;
     setIsPaused(false);
   };
@@ -87,7 +90,9 @@ export function useFileUploader() {
         const err = error as { name?: string };
         if (err?.name === "AbortError") {
           // If paused intentionally, do NOT retry
+          console.log('inside abort error')
           if (pauseRef.current) {
+            console.log('silently exiting')
             return; // silently exit
           }
         }
@@ -152,8 +157,12 @@ export function useFileUploader() {
   };
 
   const retryUpload = () => {
+    console.log('retry clicked')
+    console.log('uploadMutation: ', uploadMutation)
+    console.log('uploadMutation.variables: ', uploadMutation.variables)
     if (!uploadMutation.variables) return;
 
+    console.log('retryinggg....')
     uploadMutation.mutate(uploadMutation.variables);
   };
 
@@ -177,6 +186,7 @@ export function useFileUploader() {
 
         if (storedRaw) {
           const stored: StoredUpload = JSON.parse(storedRaw);
+          console.log('storeddddd: ', stored)
           uploadId = stored.uploadId;
           if (stored.key !== key) {
             localStorage.removeItem(storageKey);
@@ -194,6 +204,7 @@ export function useFileUploader() {
             metadata
           );
           uploadId = init.uploadId;
+          console.log('uploadId: ', uploadId)
           currentUploadRef.current = { uploadId, key };
           localStorage.setItem(
             storageKey,
@@ -250,6 +261,8 @@ export function useFileUploader() {
             }));
 
             // setProgress(Math.round((uploadedParts.length / chunks.length) * 100));
+            console.log('uploadedPartsMap.size: ', uploadedPartsMap.size)
+            console.log('chunks.length: ', chunks.length)
             setProgress(Math.round((uploadedPartsMap.size / chunks.length) * 100));
           };
         });
@@ -266,7 +279,14 @@ export function useFileUploader() {
                             .map(([PartNumber, ETag]) => ({ PartNumber, ETag }))
                             .sort((a, b) => a.PartNumber - b.PartNumber);
 
+        if(pauseRef.current) {
+          // setIsNetworkError(true)
+          throw new Error('Upload paused');
+        }
+        // if(pauseRef.current) return
+
         if (uploadedPartsMap.size !== chunks.length) {
+          setIsNetworkError(true)
           throw new Error("Upload incomplete. Some parts failed.");
         }
         const result = await FileUploadAPI.complete({
@@ -274,11 +294,14 @@ export function useFileUploader() {
           key,
           parts: sortedParts,
         });
-
+        console.log('upload complete: ', result)
+        console.log('sortedParts complete: ', sortedParts)
+        console.log('total parts uploaded: ', sortedParts.length)
+        console.log('chunks.length: ', chunks.length)
         // Clear storage after success
         localStorage.removeItem(storageKey);
         setHasStoredUpload(false);
-
+        setIsCompleted(true)
         return result;
       }catch(error: unknown){
         const err = error as { name?: string };
@@ -315,6 +338,7 @@ export function useFileUploader() {
     retryUpload,
     hasStoredUpload,
     isPaused,
-    isNetworkError
+    isNetworkError,
+    isCompleted
   };
 }

@@ -14,8 +14,10 @@ import {
 import { Pause, PlayArrow } from "@mui/icons-material";
 import { useState, useRef, useEffect } from "react";
 import { useUser } from "../../context/UserContext";
-import { useQueryClient } from "@tanstack/react-query";
+import { focusManager, useQueryClient } from "@tanstack/react-query";
 import { useFileUploader } from "../../hooks/useMultipartUpload";
+
+import { useUploadManager } from '../../context/UploadContext'
 
 type Props = {
   open: boolean;
@@ -24,6 +26,32 @@ type Props = {
   onUploaded?: () => void;
   initialFile?: File | null;
 };
+
+type UploadFileItem = {
+  file: File,
+  evidenceNumber: string,
+  description: string,
+}
+
+// type UploadItem = {
+//   file: File,
+//   progress: number,
+//   isPaused: boolean,
+//   isError: boolean
+// }
+
+// type UploadItem = {
+//   id: string;
+//   file: File;
+//   progress: number;
+//   status: "uploading" | "paused" | "error" | "completed";
+//   controller: {
+//     pause: () => void;
+//     resume: () => void;
+//     retry: () => void;
+//     cancel: () => void;
+//   };
+// };
 
 export function UploadDialog({
   open,
@@ -35,13 +63,19 @@ export function UploadDialog({
   const { user_name } = useUser();
   const queryClient = useQueryClient();
 
-  const [file, setFile] = useState<File | null>(null);
+  // const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<UploadFileItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const evidenceNumberRef = useRef<HTMLInputElement | null>(null);
   const evidenceDescriptionRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [stepMode, setStepMode] = useState(false);
 
+  const { addFiles, destinationPath } = useUploadManager()
+  console.log('prefoxxx: ', prefix)
   const {
     uploadMutation,
     progress,
@@ -53,21 +87,21 @@ export function UploadDialog({
     isNetworkError
   } = useFileUploader();
 
-  useEffect(() => {
-    if (initialFile) {
-      setFile(initialFile);
-    }
-  }, [initialFile]);
+  // useEffect(() => {
+  //   if (initialFile) {
+  //     setFiles(initialFile);
+  //   }
+  // }, [initialFile]);
 
   useEffect(() => {
   if (!open) {
-    setFile(null);
+    setFiles([]);
     setError(null);
   }
 }, [open]);
 
-  // const validateEvidenceNumber = (value: string) =>
-  //   /^\d{4}-\d{7}-E\d+$/.test(value);
+  const validateEvidenceNumber = (value: string) =>
+    /^\d{4}-\d{7}-E\d{5}$/.test(value);
 
   useEffect(() => {
   if (uploadMutation.isSuccess) {
@@ -76,8 +110,16 @@ export function UploadDialog({
   }
 }, [uploadMutation.isSuccess]);
 
+  // useEffect(() => {
+  //   // files.map((file: File) => {
+  //   //   addFiles(file)
+  //   // })
+  //   addFiles(files)
+
+  // }, [files])
+
   const handleUpload = async () => {
-    if (!file) return;
+    if (!files.length) return;
 
     const evidenceNumber = evidenceNumberRef.current?.value || "";
     const description = evidenceDescriptionRef.current?.value || "";
@@ -88,27 +130,50 @@ export function UploadDialog({
     // }
 
     setError(null);
-
+    setLoading(true)
     try {
-      setLoading(true)
-      const result = await uploadMutation.mutateAsync({
-        file,
-        key: `${prefix}${file.name}`,
-        metadata: {
-          evidenceNumber,
-          description,
-          user_name,
-          case_number: `${prefix}${file.name}`.split('/')[2]
-        },
-      });
+      
+      // const result = await uploadMutation.mutateAsync({
+      //   file,
+      //   key: `${prefix}${file.name}`,
+      //   metadata: {
+      //     evidenceNumber,
+      //     description,
+      //     user_name,
+      //     case_number: `${prefix}${file.name}`.split('/')[2]
+      //   },
+      // });
 
-      if (result?.location) {
-        queryClient.invalidateQueries({ queryKey: ["files"] });
-        queryClient.invalidateQueries({ queryKey: ["evidence"] });
-        onUploaded?.();
-        onClose();
-      }
+      // if (result?.location) {
+      //   queryClient.invalidateQueries({ queryKey: ["files"] });
+      //   queryClient.invalidateQueries({ queryKey: ["evidence"] });
+      //   onUploaded?.();
+      //   onClose();
+      // }
+      // setLoading(false)
+      //   await Promise.all(
+      //   files.map((file) =>
+      //     uploadMutation.mutateAsync({
+      //       file,
+      //       key: `${prefix}${file.name}`,
+      //       metadata: {
+      //         evidenceNumber,
+      //         description,
+      //         user_name,
+      //         case_number: `${prefix}${file.name}`.split("/")[2],
+      //       },
+      //     })
+      //   )
+      // );
+
+      // queryClient.invalidateQueries({ queryKey: ["files"] });
+      // queryClient.invalidateQueries({ queryKey: ["evidence"] });
+      addFiles(files)
+      destinationPath(prefix)
       setLoading(false)
+      setStepMode(false)
+      // onUploaded?.();
+      onClose();
     } catch (err) {
       setLoading(false)
       console.error(err);
@@ -124,23 +189,113 @@ export function UploadDialog({
     }
   };
 
+  const isCurrentValid = () => {
+    const current = files[currentIndex];
+    console.log('currentttt: ', current)
+    return (
+      validateEvidenceNumber(current?.evidenceNumber || "") && current?.description.trim() !== ""
+    )
+  }
+  const isAllValid = () => {
+    return files.every(
+      (f) => validateEvidenceNumber(f.evidenceNumber) && f.description.trim() !== ""
+    )
+  }
+
+  const handleFieldChange = (field: "evidenceNumber" | "description", value: string) => {
+    const updated = [...files]
+    updated[currentIndex][field] = value;
+    setFiles(updated)
+  }
+
   return (
     <Dialog 
       open={open} 
       onClose={(reason) => {
         if(reason == 'backdropClick') return;
-        setFile(null);
+        setFiles([]);
         setError(null);
         onClose();
       }} 
       maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 600 }}>
         Upload Evidence
+        
       </DialogTitle>
 
       <DialogContent>
         <Stack spacing={3} mt={1}>
-          <TextField
+          {!stepMode && (
+            <Button
+            variant="outlined"
+            component="label"
+            disabled={loading}
+          >
+            Select File
+            <input
+              type="file"
+              hidden
+              multiple
+              onChange={(e) =>
+                {
+                  // setFiles(e.target.files ? Array.from(e.target.files) : [])
+                  const selected = e.target.files ? Array.from(e.target.files) : [];
+                  const formatted = selected.map((file) => ({
+                    file,
+                    evidenceNumber: "",
+                    description: ""
+                  }))
+                  setFiles(formatted)
+                  setCurrentIndex(0);
+                  setStepMode(true)
+                }
+                
+              }
+            />
+          </Button>
+          )}
+
+          {stepMode && files.length > 0 && (
+            <Box>
+              <Typography fontWeight={600}>
+                File {currentIndex + 1} of {files.length}
+              </Typography>
+
+              <Typography variant="body2" color="text.secondary">
+                {files[currentIndex].file.name}
+              </Typography>
+              <TextField
+                // required
+                sx={{mt: 3}}
+                label="Kaseware Evidence Number"
+                placeholder="2025-1234567-E00001"
+                // inputRef={evidenceNumberRef}
+                value={files[currentIndex].evidenceNumber}
+                onChange={(e) => {
+                  handleFieldChange("evidenceNumber", e.target.value)
+                }}
+                error={
+                  files[currentIndex].evidenceNumber !== "" && !validateEvidenceNumber(files[currentIndex].evidenceNumber)
+                }
+                helperText="Format: YYYY-XXXXXXX-EXXXXX"
+                fullWidth
+              />
+
+              <TextField
+                sx={{mt: 3}}
+                label="Description"
+                multiline
+                rows={2}
+                value={files[currentIndex].description}
+                onChange={(e) => {
+                  handleFieldChange("description", e.target.value)
+                }}
+                // inputRef={evidenceDescriptionRef}
+                fullWidth
+              />
+            </Box>
+          )}
+          {/* <TextField
             // required
             label="Kaseware Evidence Number"
             placeholder="2025-1234567-E00001"
@@ -155,9 +310,9 @@ export function UploadDialog({
             rows={2}
             inputRef={evidenceDescriptionRef}
             fullWidth
-          />
+          /> */}
 
-          <Button
+          {/* <Button
             variant="outlined"
             component="label"
             disabled={loading}
@@ -166,17 +321,30 @@ export function UploadDialog({
             <input
               type="file"
               hidden
+              multiple
               onChange={(e) =>
-                setFile(e.target.files?.[0] || null)
+                {
+                  // setFiles(e.target.files ? Array.from(e.target.files) : [])
+                  const selected = e.target.files ? Array.from(e.target.files) : [];
+                  const formatted = selected.map((file) => ({
+                    file,
+                    evidenceNumber: "",
+                    description: ""
+                  }))
+                  setFiles(formatted)
+                  setCurrentIndex(0);
+                  setStepMode(true)
+                }
+                
               }
             />
-          </Button>
+          </Button> */}
 
-          {file && (
-            <Typography variant="body2" color="text.secondary">
-              {file.name}
+          {/* {files.map((f, index) => (
+            <Typography key={index} variant="body2" color="text.secondary">
+              {f.name}
             </Typography>
-          )}
+          ))} */}
 
           {/* Modern Progress Section */}
           {uploadMutation.isPending && (
@@ -256,7 +424,8 @@ export function UploadDialog({
         <Button
           onClick={async () => {
             await cancelUpload();
-            setFile(null);
+            setFiles([]);
+            setStepMode(false)
             setError(null);
             onClose();
           }}
@@ -264,14 +433,55 @@ export function UploadDialog({
           Cancel
         </Button>
 
-        <Button
+        {stepMode && currentIndex > 0 && (
+          <Button
+            onClick={() => setCurrentIndex((prev) => prev-1)}
+          >
+            Previous
+          </Button>
+        )}
+        {stepMode && currentIndex < files.length - 1 && (
+          <Button
+            variant="contained"
+            disabled={!isCurrentValid()}
+            onClick={() => setCurrentIndex((prev) => prev+1)}
+          >
+            Next
+          </Button>
+        )}
+
+        {stepMode && currentIndex === files.length -1 && (
+          <Button
+            variant="contained"
+            disabled={!isAllValid()}
+            // onClick={() => {
+            //   try{
+            //     console.log('prefffffffffffffffff: ', prefix)
+            //     destinationPath(prefix)
+            //     // const onlyFiles = files.map((f) => f.file);
+            //     addFiles(files);
+            //     setStepMode(false)
+            //     onClose()
+            //   }
+            //   catch(err){
+            //     setError('Upload Failed')
+            //   }
+            // }}
+            onClick={handleUpload}
+            sx={{borderRadius: 3}}
+          >
+            Upload All
+          </Button>
+        )}
+
+        {/* <Button
           variant="contained"
           onClick={handleUpload}
-          disabled={!file || uploadMutation.isPending}
+          disabled={!files || uploadMutation.isPending}
           sx={{ borderRadius: 3 }}
         >
           Upload
-        </Button>
+        </Button> */}
       </DialogActions>
     </Dialog>
   );
