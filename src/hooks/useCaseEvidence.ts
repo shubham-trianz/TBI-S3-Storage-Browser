@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CasesAPI } from '../api/cases/cases.api';
-import type { EvidenceListResponse } from '../api/cases/cases.types';
+import type { EvidenceListResponse, EvidenceCreatePayload} from '../api/cases/cases.types';
 
 export function useCaseEvidence(caseNumber: string) {
   return useQuery<EvidenceListResponse>({
@@ -10,4 +10,15 @@ export function useCaseEvidence(caseNumber: string) {
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
+}
+
+export function useCreateEvidence(caseNumber: string){
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: EvidenceCreatePayload) =>
+      CasesAPI.createEvidence(caseNumber,payload),
+    onSuccess:()=>{
+      queryClient.invalidateQueries({queryKey: ['evidence',caseNumber]})
+    }
+  })
 }
