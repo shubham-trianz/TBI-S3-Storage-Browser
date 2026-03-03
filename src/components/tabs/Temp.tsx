@@ -132,7 +132,7 @@ export const Temp = () => {
  
   return (
     <>
-      <div
+      {/* <div
         style={{
           border: '2px dashed var(--amplify-colors-neutral-40)',
           borderRadius: 8,
@@ -152,7 +152,7 @@ export const Temp = () => {
         <Text fontSize="small">
           Drag & drop files here, or use <strong>Upload</strong> — no case needed
         </Text>
-      </div>
+      </div> */}
  
       <Flex justifyContent="space-between" alignItems="center" padding="0.75rem 0">
         <Heading level={5}>Temp Files</Heading>
