@@ -1,7 +1,7 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, responsiveFontSizes } from '@mui/material/styles';
 import type {} from '@mui/x-data-grid/themeAugmentation';
 
-export const theme = createTheme({
+const baseTheme = createTheme({
   palette: {
     DataGrid: {
       bg: '#f8fafc',
@@ -9,4 +9,9 @@ export const theme = createTheme({
       headerBg: '#eaeff5',
     },
   },
+  spacing: 8,
 });
+
+const theme = responsiveFontSizes(baseTheme);
+
+export default theme
