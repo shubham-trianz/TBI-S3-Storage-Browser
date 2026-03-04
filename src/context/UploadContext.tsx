@@ -100,7 +100,7 @@ export const UploadProvider = ({ children }: { children: React.ReactNode }) => {
     setUploads(prev => prev.map(u => u.id === id ? { ...u, status}: u))
   }
   const destinationPath = (prefix: string) => {
-    setUploads(prev => prev.map(u => ({...u,prefix})))
+    setUploads(prev => prev.map(u => u.prefix === ""? ({...u,prefix}):u))
   }
   console.log('uploadsssssssssssss: ', uploads)
   return (

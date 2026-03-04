@@ -67,17 +67,21 @@ const UploadWorker = ({item}: {item: UploadItem}) => {
         attachController(item.id, {
             pause,
             resume,
-            retry: () => uploadMutation.mutate({
-                file: item.file,
-                key: `${item.prefix}${item.file.name}`,
-                // key: `private/us-east-1:b36012c8-c47f-c9b6-70f1-50eb0407d851/2027-0000002/${item.file.name}`,
-                metadata: {
-                    evidenceNumber: item.evidenceNumber,
-                    description: item.description,
-                    user_name: user_name,
-                    case_number: `${item.prefix}${item.file.name}`.split("/")[2],
-                },
-            }),
+            retry: () => {
+            //     uploadMutation.mutateAsync({
+            //     file: item.file,
+            //     key: `${item.prefix}${item.file.name}`,
+            //     // key: `private/us-east-1:b36012c8-c47f-c9b6-70f1-50eb0407d851/2027-0000002/${item.file.name}`,
+            //     metadata: {
+            //         evidenceNumber: item.evidenceNumber,
+            //         description: item.description,
+            //         user_name: user_name,
+            //         case_number: `${item.prefix}${item.file.name}`.split("/")[2],
+            //     },
+            // })
+            retryUpload()
+            updateStatus(item.id, 'uploading')
+            },
             cancel: cancelUpload,
         })
     }, [])

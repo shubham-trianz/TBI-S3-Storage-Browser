@@ -44,6 +44,7 @@ export function useFileUploader() {
     setIsPaused(true);
     controllersRef.current.forEach(c => {
       try {
+        console.log('abortinggggggg: ', c)
         c.abort();
       } catch {
         //
@@ -64,10 +65,22 @@ export function useFileUploader() {
   ) {
     let index = 0;
     const workers = Array.from({ length: limit }).map(async () => {
-      while (index < tasks.length) {
+      while(true){
+        if(index >= tasks.length) break;
+
         const currentIndex = index++;
+        // try{
         await uploadWithRetry(tasks[currentIndex]);
+        // index++;
+        // }
+        // catch(err){
+        //   throw err
+        // }
       }
+      // while (index < tasks.length) {
+      //   const currentIndex = index++;
+      //   await uploadWithRetry(tasks[currentIndex]);
+      // }
     });
 
     await Promise.all(workers);
@@ -87,15 +100,26 @@ export function useFileUploader() {
         return await task();
       } catch (error) {
         console.log('failed this upload: ', error)
+        if(error?.name === "TypeError" || error?.message === "Failed to fetch"){
+          console.log('errrorrr in puttttt in catch: ', error)
+          pauseRef.current = true;
+          setIsPaused(true);
+          setIsNetworkError(true);
+          // return
+        }
         const err = error as { name?: string };
-        if (err?.name === "AbortError") {
+        // if (err?.name === "AbortError") {
           // If paused intentionally, do NOT retry
           console.log('inside abort error')
           if (pauseRef.current) {
-            console.log('silently exiting')
-            return; // silently exit
+            // console.log('silently exiting')
+            // return; // silently exit
+            while(pauseRef.current){
+              await new Promise(r => requestAnimationFrame(r));
+            }
+            continue;
           }
-        }
+        // }
         attempt++;
         console.log(`failed this upload. Retrying for ${attempt} time`)
         if (attempt >= retries) throw err;
@@ -109,12 +133,23 @@ export function useFileUploader() {
   useEffect(() => {
   const handleOffline = () => {
     pauseRef.current = true;
+    console.log('handling off lineeeeeeeee')
     setIsPaused(true);
     setIsNetworkError(true);
+
+    controllersRef.current.forEach(c => {
+      try{
+        c.abort();
+      }
+      catch{}
+    })
+    controllersRef.current = []
   };
 
   const handleOnline = () => {
     setIsNetworkError(false);
+    pauseRef.current = false;
+    setIsPaused(false)
   };
 
   window.addEventListener("offline", handleOffline);
@@ -233,14 +268,28 @@ export function useFileUploader() {
 
             const { urls } = await FileUploadAPI.presign(uploadId, key, [partNumber]);
             const url = urls[0];
-            
+            console.log('urlllll: ', url)
             const controller = new AbortController();
             controllersRef.current.push(controller);
             const resp = await fetch(url.url, {
               method: "PUT",
               body: chunks[partNumber - 1],
               signal: controller.signal
-            });
+            })
+            // .catch(error => {
+            //   console.log('error in catch: ', error)
+            //   console.log('nnnnnnnnnnnnnnnnn: ', navigator)
+              // if(error?.name === "TypeError" || error?.message === "Failed to fetch"){
+              //   console.log('errrorrr in puttttt: ', error)
+              //   pauseRef.current = true;
+              //   setIsPaused(true);
+              //   setIsNetworkError(true);
+              //   return
+              // }
+              
+            //   throw error
+            // });
+            console.log('resppppp: ', resp)
             controllersRef.current = controllersRef.current.filter(c => c !== controller);
 
             if (!resp.ok) throw new Error("Upload failed");
@@ -260,6 +309,8 @@ export function useFileUploader() {
               uploadedParts: partsArray
             }));
 
+            console.log('partsArray: ', partsArray)
+
             // setProgress(Math.round((uploadedParts.length / chunks.length) * 100));
             console.log('uploadedPartsMap.size: ', uploadedPartsMap.size)
             console.log('chunks.length: ', chunks.length)
@@ -268,7 +319,7 @@ export function useFileUploader() {
         });
 
 
-        const CONCURRENCY_LIMIT = 5;
+        const CONCURRENCY_LIMIT = 3;
 
         await runWithLimit(tasks, CONCURRENCY_LIMIT);
 

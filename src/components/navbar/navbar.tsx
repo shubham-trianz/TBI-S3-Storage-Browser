@@ -111,7 +111,7 @@ export default function PrimarySearchAppBar() {
       }}
     >
       {/* <Typography sx={{ p: 2 }}>The content of the Popover.</Typography> */}
-      <Box sx={{minWidth: 400, p: 1}}>
+      <Box sx={{minWidth: 400, maxHeight: 600, p: 1}}>
         {[...uploads].slice().reverse().map(upload => (
                     
           <Box 
@@ -131,7 +131,7 @@ export default function PrimarySearchAppBar() {
             
             <Typography sx={{fontWeight: 500, mb: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{upload.file.name}</Typography>
 
-            <Box flex={1}>
+            <Box flex={1} sx={{display: 'flex', flexDirection: 'column'}}>
             {<LinearProgress
               color={upload.status === 'completed'?'success': 'primary'}
               variant="determinate"
@@ -147,7 +147,7 @@ export default function PrimarySearchAppBar() {
               <Box>
               {upload.status !== 'completed' && (<Typography  fontSize={20} variant="caption">
                   {/* {isPaused ? "Paused" : `${progress}% uploaded`} */}
-                  {upload.isPaused
+                  {upload.isPaused || upload.status === 'error'
                     ? "Paused"
                     : `${upload.progress}% uploaded`}
                 </Typography>)}
@@ -170,7 +170,7 @@ export default function PrimarySearchAppBar() {
                   Retry
                 </Button>
               )}
-              {upload.status !== 'completed' && (upload.isPaused ? (  
+              {upload.status !== 'completed' && upload.status !== 'error' && (upload.isPaused ? (  
                 <IconButton onClick={upload.controller.resume}>
                   <PlayArrow />
                 </IconButton>
@@ -181,6 +181,20 @@ export default function PrimarySearchAppBar() {
               ))}
               </Box>
             </Stack>
+            {/* <Box sx={{display: 'flex', flexDirection: 'row', backgroundColor: 'green'}}> */}
+              <Typography 
+                sx={{
+                  fontFamily: 'monospace', 
+                  color: 'text.secondary',
+                  letterSpacing: '0.5px', 
+                  // opacity: 0.65, 
+                  fontSize: 12,
+                  
+                  alignSelf: 'flex-end'
+                }}>
+                {upload.prefix.split('/').splice(2).join('/')}
+              </Typography>
+            {/* </Box> */}
             </Box>
             {/* <Divider/> */}
           </Box>
