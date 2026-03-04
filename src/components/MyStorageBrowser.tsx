@@ -1,18 +1,15 @@
 import { useEffect, useState } from "react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { Tabs } from "@aws-amplify/ui-react";
-import { useUser } from "../context/UserContext";
 import { Personal } from "./tabs/Personal";
 import { Shared } from "./tabs/Shared";
 import Received from "./tabs/Received";
 import  {Temp } from "./tabs/Temp";
-import Header from "./utils/Header";
 import FullScreenLoader from "./utils/FullScreenLoader";
 import { useLocation, useNavigate } from "react-router-dom";
-
+import Box from "@mui/material/Box";
 
 export const MyStorageBrowser = () => {
-  const { email, signOut } = useUser();
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -51,41 +48,28 @@ export const MyStorageBrowser = () => {
     return <FullScreenLoader text="Loading..." />;
   }
 
-  const displayName = email?.split("@")[0] || "User";
+return (
+    <>  
 
-  return (
-    <>
-      <Header displayName={displayName} signOut={signOut} />
-
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => {
-          setActiveTab(value);
-          navigate(`/${value}`);
-        }}
-        items={[
-          {
-            label: "Personal",
-            value: "private",
-            content: <Personal />,
-          },
-          {
-            label: "Shared",
-            value: "shared",
-            content: <Shared />,
-          },
-          {
-            label: "Received",
-            value: "received",
-            content: <Received />,
-          },
-          {
-            label: "Temp",
-            value: "temp",
-            content: <Temp />,
-          },
-        ]}
-      />
+      <Box sx={{ mt: 3, px: 3 }}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            setActiveTab(value);
+            navigate(`/${value}`);
+          }}
+          items={[
+            {
+              label: "Personal",
+              value: "private",
+              content: <Personal />,
+            },
+            { label: "Shared", value: "shared", content: <Shared /> },
+            { label: "Received", value: "received", content: <Received /> },
+            { label: "Temp", value: "temp", content: <Temp />, },
+          ]}
+        />
+      </Box>
     </>
   );
 };

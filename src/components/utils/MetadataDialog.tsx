@@ -27,7 +27,7 @@ interface MetadataDialogProps {
 
 // Strict format: YYYY-XXXXXXXX-EXXXXX
 
-const EVIDENCE_NUMBER_REGEX = /^\d{4}-[A-Za-z0-9]{8}-E[A-Za-z0-9]{5}$/;
+const EVIDENCE_NUMBER_REGEX = /^\d{4}-\d{7}-E\d{5}$/;
 export const MetadataDialog = ({
   open,
   files,
