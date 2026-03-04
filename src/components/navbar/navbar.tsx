@@ -31,18 +31,18 @@ import {useUploadManager} from '../../context/UploadContext'
 //   retry: () => void;
 //   cancel: () => void;
 // };
-type UploadItem = {
-  id: string;
-  file: File;
-  progress: number;
-  status: "uploading" | "paused" | "error" | "completed";
-  controller: {
-    pause: () => void;
-    resume: () => void;
-    retry: () => void;
-    cancel: () => void;
-  };
-};
+// type UploadItem = {
+//   id: string;
+//   file: File;
+//   progress: number;
+//   status: "uploading" | "paused" | "error" | "completed";
+//   controller: {
+//     pause: () => void;
+//     resume: () => void;
+//     retry: () => void;
+//     cancel: () => void;
+//   };
+// };
 
 export default function PrimarySearchAppBar() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);

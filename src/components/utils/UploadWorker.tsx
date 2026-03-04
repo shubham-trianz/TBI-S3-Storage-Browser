@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useFileUploader } from '../../hooks/useMultipartUpload';
 import { useUploadManager } from '../../context/UploadContext';
 import { useUser } from '../../context/UserContext';

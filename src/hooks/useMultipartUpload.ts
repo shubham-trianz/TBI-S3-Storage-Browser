@@ -99,15 +99,16 @@ export function useFileUploader() {
       try {
         return await task();
       } catch (error) {
+        const err = error as { name?: string, message?: string };
         console.log('failed this upload: ', error)
-        if(error?.name === "TypeError" || error?.message === "Failed to fetch"){
+        if(err?.name === "TypeError" || err?.message === "Failed to fetch"){
           console.log('errrorrr in puttttt in catch: ', error)
           pauseRef.current = true;
           setIsPaused(true);
           setIsNetworkError(true);
           // return
         }
-        const err = error as { name?: string };
+        // const err = error as { name?: string };
         // if (err?.name === "AbortError") {
           // If paused intentionally, do NOT retry
           console.log('inside abort error')

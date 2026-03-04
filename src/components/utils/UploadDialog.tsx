@@ -12,9 +12,9 @@ import {
   Box,
 } from "@mui/material";
 import { Pause, PlayArrow } from "@mui/icons-material";
-import { useState, useRef, useEffect } from "react";
-import { useUser } from "../../context/UserContext";
-import { focusManager, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+// import { useUser } from "../../context/UserContext";
+// import {  useQueryClient } from "@tanstack/react-query";
 import { useFileUploader } from "../../hooks/useMultipartUpload";
 
 import { useUploadManager } from '../../context/UploadContext'
@@ -58,19 +58,19 @@ export function UploadDialog({
   onClose,
   prefix,
   onUploaded,
-  initialFile
+  // initialFile
 }: Props) {
-  const { user_name } = useUser();
-  const queryClient = useQueryClient();
+  // const { user_name } = useUser();
+  // const queryClient = useQueryClient();
 
   // const [file, setFile] = useState<File | null>(null);
   const [files, setFiles] = useState<UploadFileItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const evidenceNumberRef = useRef<HTMLInputElement | null>(null);
-  const evidenceDescriptionRef = useRef<HTMLInputElement | null>(null);
+  // const evidenceNumberRef = useRef<HTMLInputElement | null>(null);
+  // const evidenceDescriptionRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
-  const [uploads, setUploads] = useState<UploadItem[]>([]);
+  // const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [stepMode, setStepMode] = useState(false);
 
@@ -89,7 +89,7 @@ export function UploadDialog({
 
   // useEffect(() => {
   //   if (initialFile) {
-  //     setFiles(initialFile);
+  //     setFiles([{file: initialFile, evidenceNumber: "", description: ""}]);
   //   }
   // }, [initialFile]);
 
@@ -104,11 +104,11 @@ export function UploadDialog({
     /^\d{4}-\d{7}-E\d{5}$/.test(value);
 
   useEffect(() => {
-  if (uploadMutation.isSuccess) {
-    onUploaded?.();
-    onClose();
-  }
-}, [uploadMutation.isSuccess]);
+    if (uploadMutation.isSuccess) {
+      onUploaded?.();
+      onClose();
+    }
+  }, [uploadMutation.isSuccess]);
 
   // useEffect(() => {
   //   // files.map((file: File) => {
@@ -121,8 +121,8 @@ export function UploadDialog({
   const handleUpload = async () => {
     if (!files.length) return;
 
-    const evidenceNumber = evidenceNumberRef.current?.value || "";
-    const description = evidenceDescriptionRef.current?.value || "";
+    // const evidenceNumber = evidenceNumberRef.current?.value || "";
+    // const description = evidenceDescriptionRef.current?.value || "";
 
     // if (!validateEvidenceNumber(evidenceNumber)) {
     //   setError("Evidence Number must be YYYY-XXXXXXX-EXXXXX");
