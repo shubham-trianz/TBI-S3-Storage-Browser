@@ -205,6 +205,14 @@ function AuthenticatedApp() {
               </RequireAuth>
             }
           />
+        <Route
+          path="/temp"
+          element={
+            <RequireAuth>
+              <MyStorageBrowser />
+            </RequireAuth>
+          }
+        />
 
           <Route
             path="/shared"

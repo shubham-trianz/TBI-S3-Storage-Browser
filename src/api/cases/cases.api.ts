@@ -3,6 +3,7 @@ import {
   Case,
   CreateCasePayload,
   EvidenceListResponse,
+  EvidenceCreatePayload,
   ShareCaseToPayload,
   ShareExternalPayload,
   ReceivedCase
@@ -38,6 +39,14 @@ export const CasesAPI = {
     const params = cursor ? { cursor } : {};
     return apiClient
       .get(`/cases/${caseNumber}/evidence`, { params })
+      .then(res => res.data);
+  },
+    createEvidence(
+    caseNumber: string,
+    payload?: EvidenceCreatePayload
+  ): Promise<void> {
+    return apiClient
+      .post(`/cases/${caseNumber}/evidence`, { payload })
       .then(res => res.data);
   },
   deleteEvidence(
