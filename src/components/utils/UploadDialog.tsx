@@ -76,6 +76,7 @@ export function UploadDialog({
 
   const { addFiles, destinationPath } = useUploadManager()
   console.log('prefoxxx: ', prefix)
+  const isAllowUploadWithoutMetadata = location.pathname.includes("temp")
   const {
     uploadMutation,
     progress,
@@ -443,7 +444,7 @@ export function UploadDialog({
         {stepMode && currentIndex < files.length - 1 && (
           <Button
             variant="contained"
-            disabled={!isCurrentValid()}
+            disabled={!isAllowUploadWithoutMetadata && !isCurrentValid()}
             onClick={() => setCurrentIndex((prev) => prev+1)}
           >
             Next
@@ -453,7 +454,7 @@ export function UploadDialog({
         {stepMode && currentIndex === files.length -1 && (
           <Button
             variant="contained"
-            disabled={!isAllValid()}
+            disabled={!isAllowUploadWithoutMetadata && !isAllValid()}
             // onClick={() => {
             //   try{
             //     console.log('prefffffffffffffffff: ', prefix)
