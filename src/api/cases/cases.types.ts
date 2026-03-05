@@ -7,7 +7,8 @@ export interface Case {
     jurisdiction: string[],
     shared_to: SharedTo[],
     email: string,
-    size: number
+    size: number,
+    updated_at:string
 }
 
 export interface DeleteEvidencePayload {

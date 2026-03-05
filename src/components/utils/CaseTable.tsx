@@ -74,6 +74,39 @@ type GridProps =
   | FilesModeProps
   | ReceivedModeProps;
 
+// time-format.ts
+function formatHumanTime(
+  isoString: string | null | undefined,
+  locale: string = "en-US",
+): string {
+  if (!isoString) return "—";
+
+  // Some backends emit microseconds (e.g., 2026-03-02T19:11:23.899728Z)
+  // Safari/older engines might choke on >3 fractional digits, so trim to millis.
+  const normalized = normalizeIsoToMillis(isoString);
+
+  const d = new Date(normalized);
+  if (Number.isNaN(d.getTime())) return isoString; // fall back to raw if unparsable
+
+  return d.toLocaleString(locale, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+/** Trims fractional seconds to milliseconds so Date can parse consistently. */
+function normalizeIsoToMillis(iso: string): string {
+  // Matches "YYYY-MM-DDTHH:mm:ss.<fraction>Z"
+  return iso.replace(
+    /(\.\d{1,})(Z)$/i,
+    (_m, frac: string, z: string) => `.${frac.slice(1, 4).padEnd(3, "0")}${z}`
+  );
+}
+
 export default function CasesGrid(props: GridProps) {
    const { viewMode, data, loading, handleRowClick, handleSelected, onFileDrop } = props;
 
@@ -148,6 +181,11 @@ export default function CasesGrid(props: GridProps) {
       flex: 1,
       valueFormatter: (params) =>
         formatBytes(params),
+    },
+    {
+      field: "updated_at",
+      headerName: "Last Updated",
+      flex: 1,
     },
   ];
 
@@ -341,6 +379,7 @@ function formatBytes(bytes?: number) {
         ? item.jurisdiction.join(", ")
         : item.jurisdiction,
       size: item.size,
+      updated_at:formatHumanTime(item.updated_at),
     }));
   }
 
