@@ -344,13 +344,16 @@ const selectedCount = files.filter((f) => f.selected !== false).length;
                 borderColor: "divider",
                 borderRadius: 1,
                 px: 1.5,
-                py: 1
+                py: 1,
+                minWidth: 20,
               }}
             >
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1 }}>
-                <Typography fontWeight={300} noWrap title={item.file.name}>
-                  {item.file.name}
-                </Typography>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <Box sx={{flex:1, minWidth:0}}>
+                  <Typography fontWeight={300} noWrap title={item.file.name}>
+                    {item.file.name}
+                  </Typography>
+                </Box>
               </Stack>
 
               {/* Remove button */}
