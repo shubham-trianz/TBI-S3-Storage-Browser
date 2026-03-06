@@ -8,7 +8,7 @@ import { FileViewDownloadAPI } from "../../api/viewdownload";
 
 import DownloadIcon from "@mui/icons-material/Download";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import {
   Case,
@@ -76,8 +76,8 @@ type GridProps =
 
 export default function CasesGrid(props: GridProps) {
    const { viewMode, data, loading, handleRowClick, handleSelected, onFileDrop } = props;
-
   const [isDragging, setIsDragging] = useState(false);
+  const ids = useRef<string[]>([])
 
   const handleDragOver = (e: React.DragEvent) => {
     if (viewMode !== "files") return;
@@ -227,8 +227,18 @@ export default function CasesGrid(props: GridProps) {
       const handleDownload = async (e: React.MouseEvent) => {
         e.stopPropagation();
         try{
-          const url = await FileViewDownloadAPI.getSignedUrl(id, 'download');
-          window.location.href = url;
+          console.log('idsss.curentttt: ', ids.current)
+          const urls = await FileViewDownloadAPI.getSignedUrl(ids.current.length !== 0? ids.current: [id], 'download');
+          for(let i=0; i<urls.length; i++) {
+            console.log('urll: ', urls[0])
+            const link = document.createElement('a');
+            link.href = urls[i];
+            link.setAttribute("download", "")
+            document.body.appendChild(link)
+            link.click();
+            document.body.removeChild(link)
+            await new Promise((resolve) => setTimeout(resolve, 2000))
+          }
         }
         catch(err: any){
           toast.error(err.message)
@@ -427,6 +437,7 @@ const columns = useMemo(() => {
             selectedIds = rows.map((row) => row.id).filter(id => !excludedIds.has(id))
           }
           handleSelected?.(selectedIds);
+          ids.current = selectedIds
         }}
         disableRowSelectionOnClick
         checkboxSelection
