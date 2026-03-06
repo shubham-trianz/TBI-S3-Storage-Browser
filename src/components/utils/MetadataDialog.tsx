@@ -52,7 +52,7 @@ export const MetadataDialog = ({
       return;
     }
     if (!EVIDENCE_NUMBER_REGEX.test(evidenceNumber)) {
-      setError('Format must be: YYYY-XXXXXXXX-EXXXXX (e.g. 2025-ABC12345-E00001)');
+      setError('Format must be: YYYY-XXXXXXX-EXXXXX (e.g. 2025-1234567-E00001)');
       return;
     }
     setSaving(true);
@@ -90,13 +90,13 @@ export const MetadataDialog = ({
         <Stack spacing={3} mt={1}>
           <TextField
             label="Evidence Number"
-            placeholder="2025-ABC12345-E00001"
+            placeholder="2025-1234567-E00001"
             value={evidenceNumber}
             onChange={(e) => {
               setEvidenceNumber(e.target.value);
               setError('');
             }}
-            helperText={error || "Format: YYYY-XXXXXXXX-EXXXXX"}
+            helperText={error || "Format: YYYY-XXXXXXX-EXXXXX"}
             error={!!error}
             fullWidth
           />
