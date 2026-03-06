@@ -216,7 +216,7 @@ export default function CasesGrid(props: GridProps) {
       const handleView = async (e: React.MouseEvent) => {
         e.stopPropagation();
         try{
-          const url = await FileViewDownloadAPI.getSignedUrl(id, 'view');
+          const url = await FileViewDownloadAPI.getSignedUrl([id], 'view');
           window.open(url, '_blank');
         }
         catch(err: any){
