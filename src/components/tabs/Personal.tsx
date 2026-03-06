@@ -390,7 +390,7 @@ export const Personal = () => {
               if (currentCaseNumber) {
                 setTimeout(() => {
                   refetchEvidence();
-                },);
+                },20);
               }
             }}
           />
