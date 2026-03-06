@@ -25,6 +25,8 @@ import React from 'react';
 Amplify.configure(config);
 import { ReactNode } from "react";
 import { AccessResolver } from './components/utils/AccessResolver';
+import PrimarySearchAppBar from './components/navbar/navbar';
+import { UploadProvider } from './context/UploadContext';
 
 /* -----------------------------------------
    Auth Guard for External Users (Session Token Based)
@@ -162,58 +164,49 @@ function AuthenticatedApp() {
 
   return (
     <UserContext.Provider value={{ user_name, email, signOut }}>
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            borderRadius: "12px",
-            background: "#252222",
-            color: "#fff",
-            padding: "16px",
-          },
-        }}
-      />
-
-      <Routes>
-        {/* Prevent logged-in users from visiting login */}
-        <Route path="/login" element={<Navigate to="/personal" replace />} />
-
-        {/* Default route */}
-        <Route path="/" element={<Navigate to="/personal" replace />} />
-
-        {/* 🔓 Secure share route (NOT wrapped in RequireAuth) */}
-        <Route path="/secure-view" element={<SecureSharePage />} />
-        <Route
-          path="/access/:caseId"
-          element={
-            <RequireAuth>
-              <AccessResolver />
-            </RequireAuth>
-          }
+      <UploadProvider>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              borderRadius: "12px",
+              background: "#252222",
+              color: "#fff",
+              padding: "16px",
+            },
+          }}
         />
+        <PrimarySearchAppBar/>
+        <Routes>
+          {/* Prevent logged-in users from visiting login */}
+          <Route path="/login" element={<Navigate to="/personal" replace />} />
 
-        {/* Protected pages */}
-        <Route
-          path="/personal"
-          element={
-            <RequireAuth>
-              <MyStorageBrowser />
-            </RequireAuth>
-          }
-        />
+          {/* Default route */}
+          <Route path="/" element={<Navigate to="/personal" replace />} />
 
-        <Route
-          path="/shared"
-          element={
-            <RequireAuth>
-              <MyStorageBrowser />
-            </RequireAuth>
-          }
-        />
+          {/* 🔓 Secure share route (NOT wrapped in RequireAuth) */}
+          <Route path="/secure-view" element={<SecureSharePage />} />
+          <Route
+            path="/access/:caseId"
+            element={
+              <RequireAuth>
+                <AccessResolver />
+              </RequireAuth>
+            }
+          />
 
+          {/* Protected pages */}
+          <Route
+            path="/personal"
+            element={
+              <RequireAuth>
+                <MyStorageBrowser />
+              </RequireAuth>
+            }
+          />
         <Route
-          path="/received"
+          path="/temp"
           element={
             <RequireAuth>
               <MyStorageBrowser />
@@ -221,9 +214,28 @@ function AuthenticatedApp() {
           }
         />
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/personal" replace />} />
-      </Routes>
+          <Route
+            path="/shared"
+            element={
+              <RequireAuth>
+                <MyStorageBrowser />
+              </RequireAuth>
+            }
+          />
+
+          <Route
+            path="/received"
+            element={
+              <RequireAuth>
+                <MyStorageBrowser />
+              </RequireAuth>
+            }
+          />
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/personal" replace />} />
+        </Routes>
+      </UploadProvider>
     </UserContext.Provider>
   );
 }
