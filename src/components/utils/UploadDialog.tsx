@@ -19,6 +19,7 @@ import { useState, useEffect } from "react";
 import { useFileUploader } from "../../hooks/useMultipartUpload";
 
 import { useUploadManager } from '../../context/UploadContext'
+import toast from "react-hot-toast";
 
 type Props = {
   open: boolean;
@@ -175,6 +176,10 @@ export function UploadDialog({
       setLoading(false)
       setStepMode(false)
       // onUploaded?.();
+      if(files.length == 1)
+        toast.success(`${files.length} file upload in progress...`)
+      else if(files.length > 1)
+        toast.success(`${files.length} files upload in progress...`)
       onClose();
     } catch (err) {
       setLoading(false)
