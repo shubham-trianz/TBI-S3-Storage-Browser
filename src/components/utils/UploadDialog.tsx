@@ -10,6 +10,7 @@ import {
   Typography,
   IconButton,
   Box,
+  InputAdornment
 } from "@mui/material";
 import { Pause, PlayArrow } from "@mui/icons-material";
 import { useState, useEffect } from "react";
@@ -18,6 +19,7 @@ import { useState, useEffect } from "react";
 import { useFileUploader } from "../../hooks/useMultipartUpload";
 
 import { useUploadManager } from '../../context/UploadContext'
+import toast from "react-hot-toast";
 
 type Props = {
   open: boolean;
@@ -66,7 +68,7 @@ export function UploadDialog({
   // const [file, setFile] = useState<File | null>(null);
   const [files, setFiles] = useState<UploadFileItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-
+  const evidencePrefix = `${prefix.split('/')[2]}-E`
   // const evidenceNumberRef = useRef<HTMLInputElement | null>(null);
   // const evidenceDescriptionRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
@@ -174,6 +176,10 @@ export function UploadDialog({
       setLoading(false)
       setStepMode(false)
       // onUploaded?.();
+      if(files.length == 1)
+        toast.success(`${files.length} file upload in progress...`)
+      else if(files.length > 1)
+        toast.success(`${files.length} files upload in progress...`)
       onClose();
     } catch (err) {
       setLoading(false)
@@ -205,7 +211,13 @@ export function UploadDialog({
 
   const handleFieldChange = (field: "evidenceNumber" | "description", value: string) => {
     const updated = [...files]
-    updated[currentIndex][field] = value;
+    if(field == 'evidenceNumber'){
+      updated[currentIndex]['evidenceNumber'] = evidencePrefix + value
+    }
+    else if(field == 'description'){
+      updated[currentIndex]['description'] = value;
+    }
+    
     setFiles(updated)
   }
 
@@ -269,9 +281,18 @@ export function UploadDialog({
                 // required
                 sx={{mt: 3}}
                 label="Kaseware Evidence Number"
-                placeholder="2025-1234567-E00001"
+                placeholder="00001"
                 // inputRef={evidenceNumberRef}
-                value={files[currentIndex].evidenceNumber}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment sx={{fontWeight: 600}} position="start">
+                        {evidencePrefix}
+                      </InputAdornment>
+                    )
+                  }
+                }}
+                value={files[currentIndex].evidenceNumber?.replace(`${evidencePrefix}`, "")}
                 onChange={(e) => {
                   handleFieldChange("evidenceNumber", e.target.value)
                 }}
