@@ -10,6 +10,7 @@ import {
   Typography,
   IconButton,
   Box,
+  InputAdornment
 } from "@mui/material";
 import { Pause, PlayArrow } from "@mui/icons-material";
 import { useState, useEffect } from "react";
@@ -18,6 +19,8 @@ import { useState, useEffect } from "react";
 import { useFileUploader } from "../../hooks/useMultipartUpload";
 
 import { useUploadManager } from '../../context/UploadContext'
+import DisabledByDefaultIcon from '@mui/icons-material/DisabledByDefault';
+import toast from "react-hot-toast";
 
 type Props = {
   open: boolean;
@@ -31,6 +34,7 @@ type UploadFileItem = {
   file: File,
   evidenceNumber: string,
   description: string,
+   selected?: boolean
 }
 
 // type UploadItem = {
@@ -66,7 +70,7 @@ export function UploadDialog({
   // const [file, setFile] = useState<File | null>(null);
   const [files, setFiles] = useState<UploadFileItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-
+  const evidencePrefix = `${prefix.split('/')[2]}-E`
   // const evidenceNumberRef = useRef<HTMLInputElement | null>(null);
   // const evidenceDescriptionRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
@@ -76,7 +80,7 @@ export function UploadDialog({
 
   const { addFiles, destinationPath } = useUploadManager()
   console.log('prefoxxx: ', prefix)
-  const isAllowUploadWithoutMetadata = location.pathname.includes("temp")
+  const isTemptab = location.pathname.includes("temp")
   const {
     uploadMutation,
     progress,
@@ -119,68 +123,94 @@ export function UploadDialog({
 
   // }, [files])
 
-  const handleUpload = async () => {
-    if (!files.length) return;
+  // const handleUpload = async () => {
+  //   if (!files.length) return;
 
-    // const evidenceNumber = evidenceNumberRef.current?.value || "";
-    // const description = evidenceDescriptionRef.current?.value || "";
-
-    // if (!validateEvidenceNumber(evidenceNumber)) {
-    //   setError("Evidence Number must be YYYY-XXXXXXX-EXXXXX");
-    //   return;
-    // }
-
-    setError(null);
-    setLoading(true)
-    try {
+  //   setError(null);
+  //   setLoading(true)
+  //   try {
       
-      // const result = await uploadMutation.mutateAsync({
-      //   file,
-      //   key: `${prefix}${file.name}`,
-      //   metadata: {
-      //     evidenceNumber,
-      //     description,
-      //     user_name,
-      //     case_number: `${prefix}${file.name}`.split('/')[2]
-      //   },
-      // });
+  //     // const result = await uploadMutation.mutateAsync({
+  //     //   file,
+  //     //   key: `${prefix}${file.name}`,
+  //     //   metadata: {
+  //     //     evidenceNumber,
+  //     //     description,
+  //     //     user_name,
+  //     //     case_number: `${prefix}${file.name}`.split('/')[2]
+  //     //   },
+  //     // });
 
-      // if (result?.location) {
-      //   queryClient.invalidateQueries({ queryKey: ["files"] });
-      //   queryClient.invalidateQueries({ queryKey: ["evidence"] });
-      //   onUploaded?.();
-      //   onClose();
-      // }
-      // setLoading(false)
-      //   await Promise.all(
-      //   files.map((file) =>
-      //     uploadMutation.mutateAsync({
-      //       file,
-      //       key: `${prefix}${file.name}`,
-      //       metadata: {
-      //         evidenceNumber,
-      //         description,
-      //         user_name,
-      //         case_number: `${prefix}${file.name}`.split("/")[2],
-      //       },
-      //     })
-      //   )
-      // );
+  //     // if (result?.location) {
+  //     //   queryClient.invalidateQueries({ queryKey: ["files"] });
+  //     //   queryClient.invalidateQueries({ queryKey: ["evidence"] });
+  //     //   onUploaded?.();
+  //     //   onClose();
+  //     // }
+  //     // setLoading(false)
+  //     //   await Promise.all(
+  //     //   files.map((file) =>
+  //     //     uploadMutation.mutateAsync({
+  //     //       file,
+  //     //       key: `${prefix}${file.name}`,
+  //     //       metadata: {
+  //     //         evidenceNumber,
+  //     //         description,
+  //     //         user_name,
+  //     //         case_number: `${prefix}${file.name}`.split("/")[2],
+  //     //       },
+  //     //     })
+  //     //   )
+  //     // );
 
-      // queryClient.invalidateQueries({ queryKey: ["files"] });
-      // queryClient.invalidateQueries({ queryKey: ["evidence"] });
-      addFiles(files)
-      destinationPath(prefix)
-      setLoading(false)
-      setStepMode(false)
-      // onUploaded?.();
-      onClose();
-    } catch (err) {
-      setLoading(false)
-      console.error(err);
-      setError("Upload failed");
-    }
-  };
+  //     // queryClient.invalidateQueries({ queryKey: ["files"] });
+  //     // queryClient.invalidateQueries({ queryKey: ["evidence"] });
+  //     addFiles(files)
+  //     destinationPath(prefix)
+  //     setLoading(false)
+  //     setStepMode(false)
+  //     // onUploaded?.();
+  //     if(files.length == 1)
+  //       toast.success(`${files.length} file upload in progress...`)
+  //     else if(files.length > 1)
+  //       toast.success(`${files.length} files upload in progress...`)
+  //     onClose();
+  //   } catch (err) {
+  //     setLoading(false)
+  //     console.error(err);
+  //     setError("Upload failed");
+  //   }
+  // };
+
+  
+const handleUpload = async () => {
+  const filesToUpload = files.filter((f) => f.selected !== false);
+  if (!filesToUpload.length) {
+    setError("Please select at least one file to upload.");
+    return;
+  }
+
+  setError(null);
+  setLoading(true);
+  try {
+    addFiles(filesToUpload);
+    destinationPath(prefix);
+    setLoading(false);
+    setStepMode(false);
+
+    if (filesToUpload.length === 1)
+      toast.success(`1 file upload in progress...`);
+    else
+      toast.success(`${filesToUpload.length} files upload in progress...`);
+
+    onClose();
+  } catch (err) {
+    setLoading(false);
+    console.error(err);
+    setError("Upload failed");
+  }
+};
+
 
   const togglePause = () => {
     if (isPaused) {
@@ -205,9 +235,39 @@ export function UploadDialog({
 
   const handleFieldChange = (field: "evidenceNumber" | "description", value: string) => {
     const updated = [...files]
-    updated[currentIndex][field] = value;
+    if(field == 'evidenceNumber'){
+      updated[currentIndex]['evidenceNumber'] = evidencePrefix + value
+    }
+    else if(field == 'description'){
+      updated[currentIndex]['description'] = value;
+    }
+    
     setFiles(updated)
   }
+
+const removeFileAt = (idx: number) => {
+  setFiles((prev) => {
+    const next = prev.filter((_, i) => i !== idx);
+    
+  if (!isTemptab && stepMode) {
+        if (currentIndex >= next.length) {
+          setCurrentIndex(Math.max(0, next.length - 1));
+        }
+      }
+      return next;
+    });
+};
+
+const selectedCount = files.filter((f) => f.selected !== false).length;
+
+  useEffect(() => {
+    if(selectedCount == 0){
+      setStepMode(false)
+    }
+      
+  }, [selectedCount])
+
+
 
   return (
     <Dialog 
@@ -241,11 +301,19 @@ export function UploadDialog({
                 {
                   // setFiles(e.target.files ? Array.from(e.target.files) : [])
                   const selected = e.target.files ? Array.from(e.target.files) : [];
-                  const formatted = selected.map((file) => ({
-                    file,
-                    evidenceNumber: "",
-                    description: ""
-                  }))
+                  // const formatted = selected.map((file) => ({
+                  //   file,
+                  //   evidenceNumber: "",
+                  //   description: ""
+                  // }))
+                  
+                  const formatted: UploadFileItem[] = selected.map((file) => ({
+                      file,
+                      evidenceNumber: "",
+                      description: "",
+                      selected: true // NEW
+                    }));
+
                   setFiles(formatted)
                   setCurrentIndex(0);
                   setStepMode(true)
@@ -255,8 +323,55 @@ export function UploadDialog({
             />
           </Button>
           )}
+          
+            {isTemptab && files.length > 0 &&  (
+              <Box sx={{ fontFamily: "inherit", fontSize: 20 }}>
+                Total files selected {files.length}
+              </Box>
+            )}
 
-          {stepMode && files.length > 0 && (
+        {isTemptab &&
+          files.map((item, index) => (
+            <Box
+              key={item.file.name + index}
+              sx={{
+                fontFamily: "inherit",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 1,
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 1,
+                px: 1.5,
+                py: 1,
+                minWidth: 20,
+              }}
+            >
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <Box sx={{flex:1, minWidth:0}}>
+                  <Typography fontWeight={300} noWrap title={item.file.name}>
+                    {item.file.name}
+                  </Typography>
+                </Box>
+              </Stack>
+
+              {/* Remove button */}
+              <IconButton
+                aria-label="remove-file"
+                color="error"
+                onClick={() => removeFileAt(index)}
+                title="Remove from list"
+                size="small"
+                sx={{ borderColor: "divider" }}
+              >
+                <DisabledByDefaultIcon/>
+              </IconButton>
+            </Box>
+          ))}
+
+
+          {stepMode && files.length > 0 && !isTemptab  && (
             <Box>
               <Typography fontWeight={600}>
                 File {currentIndex + 1} of {files.length}
@@ -269,9 +384,18 @@ export function UploadDialog({
                 // required
                 sx={{mt: 3}}
                 label="Kaseware Evidence Number"
-                placeholder="2025-1234567-E00001"
+                placeholder="00001"
                 // inputRef={evidenceNumberRef}
-                value={files[currentIndex].evidenceNumber}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment sx={{fontWeight: 600}} position="start">
+                        {evidencePrefix}
+                      </InputAdornment>
+                    )
+                  }
+                }}
+                value={files[currentIndex].evidenceNumber?.replace(`${evidencePrefix}`, "")}
                 onChange={(e) => {
                   handleFieldChange("evidenceNumber", e.target.value)
                 }}
@@ -434,27 +558,27 @@ export function UploadDialog({
           Cancel
         </Button>
 
-        {stepMode && currentIndex > 0 && (
+        {stepMode  && !isTemptab && currentIndex > 0 && (
           <Button
             onClick={() => setCurrentIndex((prev) => prev-1)}
           >
             Previous
           </Button>
         )}
-        {stepMode && currentIndex < files.length - 1 && (
+        {stepMode && !isTemptab && currentIndex < files.length - 1 && (
           <Button
             variant="contained"
-            disabled={!isAllowUploadWithoutMetadata && !isCurrentValid()}
+            disabled={!isTemptab && !isCurrentValid()}
             onClick={() => setCurrentIndex((prev) => prev+1)}
           >
             Next
           </Button>
         )}
 
-        {stepMode && currentIndex === files.length -1 && (
+        {stepMode  && (isTemptab || currentIndex === files.length -1) && (
           <Button
             variant="contained"
-            disabled={!isAllowUploadWithoutMetadata && !isAllValid()}
+            disabled={!isTemptab && !isAllValid()}
             // onClick={() => {
             //   try{
             //     console.log('prefffffffffffffffff: ', prefix)

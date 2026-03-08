@@ -21,8 +21,6 @@ import amplifyConfig from '../../../amplify_outputs.json';
 import { CasesAPI } from '../../api/cases/cases.api';
 import toast from 'react-hot-toast';
 
-// ---------------------- TYPES ----------------------
-
 interface Case {
   case_number: string;
   case_title?: string;
@@ -52,8 +50,6 @@ type TreeNodeState = {
   loading?: boolean;
 };
 
-// ---------------------- UTILITIES ----------------------
-
 const ensureTrailingSlash = (p: string) => (p.endsWith('/') ? p : `${p}/`);
 const stripTrailingSlash = (p: string) => p.replace(/\/$/, '');
 const getFolderName = (full: string, root: string) => {
@@ -62,7 +58,6 @@ const getFolderName = (full: string, root: string) => {
   return parts[parts.length - 1] ?? '';
 };
 
-// Safer CopySource: encode every segment except '/' for S3
 const encodeCopySource = (bucket: string, key: string) =>
   `${bucket}/${encodeURIComponent(key).replace(/%2F/g, '/')}`;
 
@@ -78,7 +73,6 @@ const ancestorsFromRoot = (root: string, target: string): string[] => {
   return result;
 };
 
-// ---------------------- ICONS ----------------------
 
 const ChevronRight = () => (
   <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -121,7 +115,6 @@ const MagnifierIcon = () => (
   </svg>
 );
 
-// ---------------------- COMPONENT ----------------------
 
 export const MoveDialog = ({
   open,
@@ -137,15 +130,12 @@ export const MoveDialog = ({
   const s3Ref = useRef<S3Client | null>(null);
   const bucket: string = amplifyConfig.storage.bucket_name;
 
-  // Modal root ref (for search popover anchoring/clamping)
   const modalRef = useRef<HTMLDivElement | null>(null);
 
-  // Tree state
   const [rootPrefix, setRootPrefix] = useState<string>('');
   const [tree, setTree] = useState<Record<string, TreeNodeState>>({});
   const [selectedPrefix, setSelectedPrefix] = useState<string>('');
 
-  // Search state (popover anchored to button, clamped within modal)
   const [showSearch, setShowSearch] = useState<boolean>(false);
   const [searchIndex, setSearchIndex] = useState<string[] | null>(null);
   const [indexing, setIndexing] = useState<boolean>(false);
@@ -155,30 +145,22 @@ export const MoveDialog = ({
   const searchPopoverRef = useRef<HTMLDivElement | null>(null);
   const [searchStyle, setSearchStyle] = useState<React.CSSProperties>({});
 
-  // Create folder state
   const [newFolder, setNewFolder] = useState<string>('');
   const [creatingFolder, setCreatingFolder] = useState<boolean>(false);
 
-  // Init S3 client
   useEffect(() => {
     createS3Client().then((c) => (s3Ref.current = c as S3Client));
   }, []);
 
-  // Reset when modal opens
   useEffect(() => {
     if (open) {
       setSelectedCase('');
       setTree({});
-      setRootPrefix('');
-      setSelectedPrefix('');
-      setSearchIndex(null);
-      setQuery('');
       setShowSearch(false);
       setNewFolder('');
     }
   }, [open]);
 
-  // ---------- S3 listing helpers (fully typed) ----------
 
   const listImmediateSubfolders = async (prefix: string): Promise<string[]> => {
     if (!s3Ref.current) return [];
@@ -219,8 +201,6 @@ export const MoveDialog = ({
     }
     return result;
   };
-
-  // ---------- Tree operations ----------
 
   const initCaseRoot = async (caseNum: string): Promise<void> => {
     const caseObj = cases.find((c) => c.case_number === caseNum);
@@ -324,31 +304,24 @@ export const MoveDialog = ({
     }
   };
 
-  // ---------- Search (small button + anchored & clamped popover) ----------
-
   const computeSearchPosition = () => {
     const btn = searchBtnRef.current;
     const pane = searchPopoverRef.current;
     const modal = modalRef.current;
     if (!btn || !pane || !modal) return;
 
-    // Get rects
     const btnRect = btn.getBoundingClientRect();
     const modalRect = modal.getBoundingClientRect();
 
-    // Popover dimensions (use existing width if set, default 320)
     const width = 320;
     const margin = 8;
 
-    // Compute position relative to the modal (NOT the viewport)
-    // Convert viewport coords to modal-local coords
     const btnRightRel = btnRect.right - modalRect.left;
     const btnLeftRel = btnRect.left - modalRect.left;
     const btnBottomRel = btnRect.bottom - modalRect.top;
 
     const modalWidth = modalRect.width;
 
-    // Preferred: right-aligned under button
     let left = btnRightRel - width;
     let top = btnBottomRel + margin;
 
